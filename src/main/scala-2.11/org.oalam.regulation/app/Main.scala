@@ -46,7 +46,6 @@ object Main extends App {
     val reportHandler = system.actorOf(Props(new ReportHandler()), "reportHandler")
 
     // setup engine cycles
-    val engineDriver = new MockEngineDriver()
     val engineManager = system.actorOf(Props(new EngineCyclesManager()), "engineManager")
 
     // setup temperature event handler

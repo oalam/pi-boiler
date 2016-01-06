@@ -1,18 +1,10 @@
 package org.oalam.regulation.core
 
-import java.net.InetAddress
-import java.util.Date
-
 import akka.actor.Actor
 import akka.event.Logging
-import org.elasticsearch.client.transport.TransportClient
-import org.elasticsearch.common.settings.Settings
-import org.elasticsearch.common.transport.InetSocketTransportAddress
-import org.elasticsearch.common.xcontent.XContentFactory._
 import org.oalam.regulation.util._
 
 import scala.concurrent.duration._
-
 
 
 /**
@@ -20,21 +12,6 @@ import scala.concurrent.duration._
   *
   */
 class ReportHandler extends Actor {
-
-
-
-
-
-    val settings = Settings.settingsBuilder()
-        .put("client.transport.ping_timeout", "15s")
-        .put("client.transport.sniff", false)
-        .put("client.transport.nodes_sampler_interval", "15s")
-        .put("cluster.name", "boiler")
-        .build()
-
-
-    val client = TransportClient.builder().settings(settings).build()
-        .addTransportAddress(new InetSocketTransportAddress(InetAddress.getByName("192.168.1.67"), 9300))
 
 
     val log = Logging(context.system, this)
@@ -60,190 +37,81 @@ class ReportHandler extends Actor {
 
 
     override def receive = {
+
         case TemperatureReport(lastValue: Float, currentValue: Float) =>
             if (lastValue != currentValue) {
-                try {
-                    client.prepareIndex("boiler", "event")
-                        .setSource(jsonBuilder()
-                            .startObject()
-                            .field("type", "TemperatureReport")
-                            .field("date", new Date())
-                            .field("value", currentValue)
-                            .endObject()
-                        )
-                        .get()
-                } catch {
-                    case e: Exception => log.error("unable to publish event to Elasticsearch")
-                } finally {
-                    log.info(s"TemperatureReport(lastValue: $lastValue, currentValue: $currentValue)")
-                    lastTemperature = currentValue
-                }
+                log.info(s"TemperatureReport(lastValue: $lastValue, currentValue: $currentValue)")
+                ElasticsearchAgent.dumpTemperatureReport(currentValue)
+                lastTemperature = currentValue
             }
 
 
         case StartSlowMotionCycle(slowMotionCycleDuration: FiniteDuration, initialIdleDelay: FiniteDuration, delayOn: FiniteDuration, delayOff: FiniteDuration, additionnalDelay: FiniteDuration) =>
-            try {
-                client.prepareIndex("boiler", "event")
-                    .setSource(jsonBuilder()
-                        .startObject()
-                        .field("type", "StartSlowMotionCycle")
-                        .field("date", new Date())
-                        .field("slowMotionCycleDuration", slowMotionCycleDuration.toSeconds)
-                        .field("initialIdleDelay", initialIdleDelay.toSeconds)
-                        .field("delayOn", delayOn.toSeconds)
-                        .field("delayOff", delayOff.toSeconds)
-                        .field("additionnalDelay", additionnalDelay.toSeconds)
-                        .endObject()
-                    )
-                    .get()
-            } catch {
-                case e: Exception => log.error("unable to publish event to Elasticsearch")
-            } finally {
-                slowCyclesCount += 1
-                log.info(s"StartSlowMotionCycle(slowMotionCycleDuration, :$slowMotionCycleDuration, initialIdleDelay: $initialIdleDelay, delayOn: $delayOn, delayOff: $delayOff, additionnalDelay: $additionnalDelay) total : $slowCyclesCount")
-            }
+            ElasticsearchAgent.dumpStartSlowMotionCycle(
+                slowMotionCycleDuration,
+                initialIdleDelay,
+                delayOn,
+                delayOff,
+                additionnalDelay)
+            slowCyclesCount += 1
+            log.info(s"StartSlowMotionCycle(slowMotionCycleDuration, :$slowMotionCycleDuration, " +
+                s"initialIdleDelay: $initialIdleDelay, " +
+                s"delayOn: $delayOn, " +
+                s"delayOff: $delayOff, " +
+                s"additionnalDelay: $additionnalDelay) " +
+                s"total : $slowCyclesCount")
 
 
         case StartBurningCycle(delayOn: FiniteDuration, delayOff: FiniteDuration, additionnalDelay: FiniteDuration, remainingCycles: Int) =>
-            try {
-                client.prepareIndex("boiler", "event")
-                    .setSource(jsonBuilder()
-                        .startObject()
-                        .field("type", "StartBurningCycle")
-                        .field("date", new Date())
-                        .field("remainingCycles", remainingCycles)
-                        .field("delayOn", delayOn.toSeconds)
-                        .field("delayOff", delayOff.toSeconds)
-                        .field("additionnalDelay", additionnalDelay.toSeconds)
-                        .endObject()
-                    )
-                    .get()
-            } catch {
-                case e: Exception => log.error("unable to publish event to Elasticsearch")
-            } finally {
-                cyclesCount += 1
-                log.info(s"StartBurningCycle( delayOn: $delayOn, delayOff: $delayOff, additionnalDelay: $additionnalDelay, remainingCycles : $remainingCycles) total : $cyclesCount")
-            }
+            ElasticsearchAgent.dumpStartBurningCycle(delayOn, delayOff, additionnalDelay, remainingCycles)
+            cyclesCount += 1
+            log.info(s"StartBurningCycle( delayOn: $delayOn, " +
+                s"delayOff: $delayOff, " +
+                s"additionnalDelay: $additionnalDelay, " +
+                s"remainingCycles : $remainingCycles) " +
+                s"total : $cyclesCount")
 
 
         case TemperatureCrossConsigneUp(tempConsigne: Float, currentTemperature: Float) =>
-            try {
-                client.prepareIndex("boiler", "event")
-                    .setSource(jsonBuilder()
-                        .startObject()
-                        .field("type", "TemperatureCrossConsigneUp")
-                        .field("date", new Date())
-                        .field("tempConsigne", tempConsigne)
-                        .field("currentTemperature", currentTemperature)
-                        .endObject()
-                    )
-                    .get()
-            } catch {
-                case e: Exception => log.error("unable to publish event to Elasticsearch")
-            } finally {
-                log.info(s"TemperatureCrossConsigneUp(tempConsigne: $tempConsigne, currentTemperature: $currentTemperature )")
-            }
+            ElasticsearchAgent.dumpTemperatureEvent("TemperatureCrossConsigneUp", tempConsigne, currentTemperature)
+            log.info(s"TemperatureCrossConsigneUp(tempConsigne: $tempConsigne, currentTemperature: $currentTemperature )")
 
 
         case TemperatureCrossConsigneDown(tempConsigne: Float, currentTemperature: Float) =>
-            try {
-                client.prepareIndex("boiler", "event")
-                    .setSource(jsonBuilder()
-                        .startObject()
-                        .field("type", "TemperatureCrossConsigneDown")
-                        .field("date", new Date())
-                        .field("tempConsigne", tempConsigne)
-                        .field("currentTemperature", currentTemperature)
-                        .endObject()
-                    )
-                    .get()
-            } catch {
-                case e: Exception => log.error("unable to publish event to Elasticsearch")
-            } finally {
-                log.info(s"TemperatureCrossConsigneDown(tempConsigne: $tempConsigne, currentTemperature: $currentTemperature )")
-            }
+            ElasticsearchAgent.dumpTemperatureEvent("TemperatureCrossConsigneDown", tempConsigne, currentTemperature)
+            log.info(s"TemperatureCrossConsigneDown(tempConsigne: $tempConsigne, currentTemperature: $currentTemperature )")
+
 
         case TemperatureTooHigh(currentTemperature: Float) =>
-            try {
-                client.prepareIndex("boiler", "event")
-                    .setSource(jsonBuilder()
-                        .startObject()
-                        .field("type", "TemperatureTooHigh")
-                        .field("date", new Date())
-                        .field("currentTemperature", currentTemperature)
-                        .endObject()
-                    )
-                    .get()
-            } catch {
-                case e: Exception => log.error("unable to publish event to Elasticsearch")
-            } finally {
-                log.warning(s"TemperatureTooHigh : $currentTemperature => arret des vis sans fin et allumage circulateurs")
-                // send an sms
-                SmsAgent.sendMessage(s"TemperatureTooHigh : $currentTemperature")
-            }
+            ElasticsearchAgent.dumpTemperatureEvent("TemperatureTooHigh", currentTemperature = currentTemperature)
+            log.warning(s"TemperatureTooHigh : $currentTemperature => arret des vis sans fin et allumage circulateurs")
+            SmsAgent.sendMessage(s"TemperatureTooHigh : $currentTemperature")
+            MailAgent.sendMessage(
+                to = "bailet.thomas@gmail.com",
+                from = "pi-boiler@oalam.org",
+                subject = "boiler too high",
+                content = s"TemperatureTooHigh : $currentTemperature => arret des vis sans fin et allumage circulateurs")
 
-            try{
-                val mail = new MailAgent(to = "bailet.thomas@gmail.com", from = "pi-boiler@oalam.org", subject = "boiler too high", content = s"TemperatureTooHigh : $currentTemperature => arret des vis sans fin et allumage circulateurs")
-                mail.sendMessage
-            }catch {
-                case e: Exception => log.error("unable to send email")
-            }
 
         case TemperatureTooLow(currentTemperature: Float) =>
-            try {
-                client.prepareIndex("boiler", "event")
-                    .setSource(jsonBuilder()
-                        .startObject()
-                        .field("type", "TemperatureTooLow")
-                        .field("date", new Date())
-                        .field("currentTemperature", currentTemperature)
-                        .endObject()
-                    )
-                    .get()
-            } catch {
-                case e: Exception => log.error("unable to publish event to Elasticsearch")
-            } finally {
-                log.warning(s"TemperatureTooLow : $currentTemperature => arret des vis sans fin et allumage circulateurs")
-                // send an sms
-                sendSms(s"TemperatureTooLow : $currentTemperature")
-
-            }
-            try{
-                val mail = new MailAgent(to = "bailet.thomas@gmail.com", from = "pi-boiler@oalam.org", subject = "boiler too low", content = s"TemperatureTooLow : $currentTemperature => arret des vis sans fin et allumage circulateurs")
-                mail.sendMessage
-            }catch {
-                case e: Exception => log.error("unable to send email")
-            }
+            ElasticsearchAgent.dumpTemperatureEvent("TemperatureTooLow", currentTemperature = currentTemperature)
+            log.warning(s"TemperatureTooLow : $currentTemperature => arret des vis sans fin et allumage circulateurs")
+            // send an sms
+            SmsAgent.sendMessage(s"TemperatureTooLow : $currentTemperature")
+            MailAgent.sendMessage(
+                to = "bailet.thomas@gmail.com",
+                from = "pi-boiler@oalam.org",
+                subject = "boiler too low",
+                content = s"TemperatureTooLow : $currentTemperature => arret des vis sans fin et allumage circulateurs")
 
 
-                case BoilerUpdateSettings(settings: BoilerSettings) =>
-                try {
-                    client.prepareIndex("boiler", "event")
-                        .setSource(jsonBuilder()
-                            .startObject()
-                            .field("type", "BoilerUpdateSettings")
-                            .field("date", new Date())
-                            .field("dureeFonctionnementVis", settings.dureeFonctionnementVis.toString())
-                            .field("dureeArretVis", settings.dureeArretVis.toString())
-                            .field("dureePostFonctionnementBruleur", settings.dureePostFonctionnementBruleur.toString())
-                            .field("temperatureConsigne", settings.temperatureConsigne.toString())
-                            .field("postCirculationCirculateur", settings.postCirculationCirculateur.toString())
-                            .field("postCirculationVentilateur", settings.postCirculationVentilateur.toString())
-                            .field("tempsFonctionnementRalenti", settings.tempsFonctionnementRalenti.toString())
-                            .field("dureeModeRalenti", settings.dureeModeRalenti.toString())
-                            .field("dureeRepos", settings.dureeRepos.toString())
-                            .endObject()
-                        )
-                        .get()
-                } catch {
-                    case e: Exception => log.error("unable to publish event to Elasticsearch")
-                } finally {
-                    log.info(s"BoilerUpdateSettings( settings :$settings)")
-                }
+        case BoilerUpdateSettings(settings: BoilerSettings) =>
+            ElasticsearchAgent.dumpBoilerUpdateSettings(settings)
+            log.info(s"BoilerUpdateSettings( settings :$settings)")
 
 
         case BoilerShutdown =>
-            // releas es
-            client.close()
-            }
+            ElasticsearchAgent.shutdown
     }
+
+}

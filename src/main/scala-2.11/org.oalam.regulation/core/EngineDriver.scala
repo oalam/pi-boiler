@@ -12,30 +12,6 @@ object BoilerEngine extends Enumeration {
 
 
 import org.oalam.regulation.core.BoilerEngine._
-trait EngineDriver {
-    def checkEngineHealth(engine: BoilerEngine): Boolean
-
-    def startEngine(engine: BoilerEngine)
-
-    def stopEngine(engine: BoilerEngine)
-
-    def shutdwown()
-}
-
-class MockEngineDriver extends EngineDriver {
-    def checkEngineHealth(engine: BoilerEngine): Boolean = {
-        true
-    }
-
-    def startEngine(engine: BoilerEngine) = {
-    }
-
-    def stopEngine(engine: BoilerEngine) = {
-    }
-
-    def shutdwown() = {
-    }
-}
 
 
 
@@ -43,7 +19,7 @@ class MockEngineDriver extends EngineDriver {
 /**
   * Moteur piloté via PIN GPIO
   */
-class GPIOEngineDriver extends Actor with EngineDriver {
+class GPIOEngineDriver extends Actor  {
 
     /**
       * akka setup
@@ -52,14 +28,33 @@ class GPIOEngineDriver extends Actor with EngineDriver {
     val reportHandler = context.actorSelection("../reportHandler")
 
     override def receive = {
+
         case StartEngine(engine: BoilerEngine) =>
-            startEngine(engine)
+            engine match {
+                case BoilerEngine.Bruleur => bruleur.low()
+                case BoilerEngine.Tremie => tremie.low()
+                case BoilerEngine.Ventilo => ventilo.low()
+                case BoilerEngine.Vanne4V => vanne4V.low()
+                case BoilerEngine.Laddomat => laddomat.low()
+                case _ => throw new IllegalArgumentException(s"unknown engineName:$engine")
+            }
+
 
         case StopEngine(engine: BoilerEngine) =>
-            stopEngine(engine)
+            engine match {
+                case BoilerEngine.Bruleur => bruleur.high()
+                case BoilerEngine.Tremie => tremie.high()
+                case BoilerEngine.Ventilo => ventilo.high()
+                case BoilerEngine.Vanne4V => vanne4V.high()
+                case BoilerEngine.Laddomat => laddomat.high()
+                case _ => throw new IllegalArgumentException(s"unknown engineName:$engine")
+            }
+
 
         case BoilerShutdown =>
-            shutdwown()
+            // doit être appelé pour clore les ressources gpio proprement
+            gpio.shutdown()
+
     }
 
     /**
@@ -85,7 +80,7 @@ class GPIOEngineDriver extends Actor with EngineDriver {
 
     // create and register gpio pin listener
     tremieSecu.addListener(new GpioPinListenerDigital() {
-        override def handleGpioPinDigitalStateChangeEvent(event:GpioPinDigitalStateChangeEvent) = {
+        override def handleGpioPinDigitalStateChangeEvent(event: GpioPinDigitalStateChangeEvent) = {
             // display pin state on console
             System.out.println(" --> GPIO PIN STATE CHANGE: " + event.getPin() + " = " + event.getState());
         }
@@ -93,7 +88,7 @@ class GPIOEngineDriver extends Actor with EngineDriver {
 
     // create and register gpio pin listener
     bruleurSecu.addListener(new GpioPinListenerDigital() {
-        override def handleGpioPinDigitalStateChangeEvent(event:GpioPinDigitalStateChangeEvent) = {
+        override def handleGpioPinDigitalStateChangeEvent(event: GpioPinDigitalStateChangeEvent) = {
             // display pin state on console
             System.out.println(" --> GPIO PIN STATE CHANGE: " + event.getPin() + " = " + event.getState());
         }
@@ -112,40 +107,5 @@ class GPIOEngineDriver extends Actor with EngineDriver {
         }
     }
 
-    /**
-      * démarre un moteur
-      * @param engine
-      */
-    def startEngine(engine: BoilerEngine) = {
-        engine match {
-            case BoilerEngine.Bruleur => bruleur.low()
-            case BoilerEngine.Tremie => tremie.low()
-            case BoilerEngine.Ventilo => ventilo.low()
-            case BoilerEngine.Vanne4V => vanne4V.low()
-            case BoilerEngine.Laddomat => laddomat.low()
-            case _ => throw new IllegalArgumentException(s"unknown engineName:$engine")
-        }
-    }
 
-    /**
-      * stoppe un moteur
-      * @param engine
-      */
-    def stopEngine(engine: BoilerEngine) = {
-        engine match {
-            case BoilerEngine.Bruleur => bruleur.high()
-            case BoilerEngine.Tremie => tremie.high()
-            case BoilerEngine.Ventilo => ventilo.high()
-            case BoilerEngine.Vanne4V => vanne4V.high()
-            case BoilerEngine.Laddomat => laddomat.high()
-            case _ => throw new IllegalArgumentException(s"unknown engineName:$engine")
-        }
-    }
-
-    /**
-      * doit être appelé pour clore les ressources gpio proprement
-      */
-    def shutdwown() = {
-        gpio.shutdown()
-    }
 }
