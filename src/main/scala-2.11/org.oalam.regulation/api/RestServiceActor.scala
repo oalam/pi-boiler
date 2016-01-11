@@ -42,15 +42,12 @@ class RestServiceActor extends Actor with HttpService {
                         case "shutdown" => boiler ! BoilerShutdown
                         case "set" =>
                             val temperature: Int = Integer.parseInt(params.getOrElse("temperature", "70"))
-                            val delayOn: Int = Integer.parseInt(params.getOrElse("delayOn", "3"))
                             val delayOff: Int = Integer.parseInt(params.getOrElse("delayOff", "20"))
+                            val restDuration: Int = Integer.parseInt(params.getOrElse("restDuration", "5"))
 
                             val settings = new BoilerSettings(
-                                dureeFonctionnementVis = delayOn seconds,
                                 dureeArretVis = delayOff seconds,
-                                dureePostFonctionnementBruleur = 5 seconds,
-                                dureeModeRalenti = 2 minutes,
-                                dureeRepos =  5 minutes,
+                                dureeRepos =  restDuration minutes,
                                 temperatureConsigne = temperature)
 
                             boiler ! BoilerUpdateSettings(settings)

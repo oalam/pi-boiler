@@ -50,11 +50,7 @@ object ElasticsearchAgent {
     }
 
 
-    def dumpStartSlowMotionCycle(slowMotionCycleDuration: FiniteDuration,
-                                 initialIdleDelay: FiniteDuration,
-                                 delayOn: FiniteDuration,
-                                 delayOff: FiniteDuration,
-                                 additionnalDelay: FiniteDuration) = {
+    def dumpStartSlowMotionCycle(slowMotionCycleDuration: FiniteDuration) = {
         try {
             client.prepareIndex("boiler", "event")
                 .setSource(jsonBuilder()
@@ -62,10 +58,6 @@ object ElasticsearchAgent {
                     .field("type", "StartSlowMotionCycle")
                     .field("date", new Date())
                     .field("slowMotionCycleDuration", slowMotionCycleDuration.toSeconds)
-                    .field("initialIdleDelay", initialIdleDelay.toSeconds)
-                    .field("delayOn", delayOn.toSeconds)
-                    .field("delayOff", delayOff.toSeconds)
-                    .field("additionnalDelay", additionnalDelay.toSeconds)
                     .endObject()
                 )
                 .get()
@@ -77,15 +69,13 @@ object ElasticsearchAgent {
 
     def dumpStartBurningCycle(delayOn: FiniteDuration,
                               delayOff: FiniteDuration,
-                              additionnalDelay: FiniteDuration,
-                              remainingCycles: Int) = {
+                              additionnalDelay: FiniteDuration) = {
         try {
             client.prepareIndex("boiler", "event")
                 .setSource(jsonBuilder()
                     .startObject()
                     .field("type", "StartBurningCycle")
                     .field("date", new Date())
-                    .field("remainingCycles", remainingCycles)
                     .field("delayOn", delayOn.toSeconds)
                     .field("delayOff", delayOff.toSeconds)
                     .field("additionnalDelay", additionnalDelay.toSeconds)
@@ -122,14 +112,8 @@ object ElasticsearchAgent {
                     .startObject()
                     .field("type", "BoilerUpdateSettings")
                     .field("date", new Date())
-                    .field("dureeFonctionnementVis", settings.dureeFonctionnementVis.toString())
                     .field("dureeArretVis", settings.dureeArretVis.toString())
-                    .field("dureePostFonctionnementBruleur", settings.dureePostFonctionnementBruleur.toString())
                     .field("temperatureConsigne", settings.temperatureConsigne.toString())
-                    .field("postCirculationCirculateur", settings.postCirculationCirculateur.toString())
-                    .field("postCirculationVentilateur", settings.postCirculationVentilateur.toString())
-                    .field("tempsFonctionnementRalenti", settings.tempsFonctionnementRalenti.toString())
-                    .field("dureeModeRalenti", settings.dureeModeRalenti.toString())
                     .field("dureeRepos", settings.dureeRepos.toString())
                     .endObject()
                 )
@@ -139,4 +123,19 @@ object ElasticsearchAgent {
         }
     }
 
+    def dumpEngineEvent(eventType: String) = {
+        try {
+            client.prepareIndex("boiler", "event")
+                .setSource(jsonBuilder()
+                    .startObject()
+                    .field("type", eventType)
+                    .field("date", new Date())
+                    .endObject()
+                )
+                .get()
+        } catch {
+            case e: Exception => log.error("unable to publish event to Elasticsearch")
+        }
+
+    }
 }

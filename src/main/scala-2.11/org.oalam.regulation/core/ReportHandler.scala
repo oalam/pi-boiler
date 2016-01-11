@@ -46,29 +46,18 @@ class ReportHandler extends Actor {
             }
 
 
-        case StartSlowMotionCycle(slowMotionCycleDuration: FiniteDuration, initialIdleDelay: FiniteDuration, delayOn: FiniteDuration, delayOff: FiniteDuration, additionnalDelay: FiniteDuration) =>
-            ElasticsearchAgent.dumpStartSlowMotionCycle(
-                slowMotionCycleDuration,
-                initialIdleDelay,
-                delayOn,
-                delayOff,
-                additionnalDelay)
+        case StartSlowMotionCycle(slowMotionCycleDuration: FiniteDuration) =>
+            ElasticsearchAgent.dumpStartSlowMotionCycle(slowMotionCycleDuration)
             slowCyclesCount += 1
-            log.info(s"StartSlowMotionCycle(slowMotionCycleDuration, :$slowMotionCycleDuration, " +
-                s"initialIdleDelay: $initialIdleDelay, " +
-                s"delayOn: $delayOn, " +
-                s"delayOff: $delayOff, " +
-                s"additionnalDelay: $additionnalDelay) " +
-                s"total : $slowCyclesCount")
+            log.info(s"StartSlowMotionCycle(slowMotionCycleDuration, :$slowMotionCycleDuration) ")
 
 
-        case StartBurningCycle(delayOn: FiniteDuration, delayOff: FiniteDuration, additionnalDelay: FiniteDuration, remainingCycles: Int) =>
-            ElasticsearchAgent.dumpStartBurningCycle(delayOn, delayOff, additionnalDelay, remainingCycles)
+        case StartBurningCycle(delayOn: FiniteDuration, delayOff: FiniteDuration, additionnalDelay: FiniteDuration) =>
+            ElasticsearchAgent.dumpStartBurningCycle(delayOn, delayOff, additionnalDelay)
             cyclesCount += 1
             log.info(s"StartBurningCycle( delayOn: $delayOn, " +
                 s"delayOff: $delayOff, " +
                 s"additionnalDelay: $additionnalDelay, " +
-                s"remainingCycles : $remainingCycles) " +
                 s"total : $cyclesCount")
 
 
@@ -112,6 +101,14 @@ class ReportHandler extends Actor {
 
         case BoilerShutdown =>
             ElasticsearchAgent.shutdown
+
+        case BourrageTremie =>
+            ElasticsearchAgent.dumpEngineEvent("BourrageTremie")
+            log.warning(s"Bourragetremie")
+
+        case BourrageBruleur =>
+            ElasticsearchAgent.dumpEngineEvent("BourrageBruleur")
+            log.warning(s"BourrageBruleur")
     }
 
 }

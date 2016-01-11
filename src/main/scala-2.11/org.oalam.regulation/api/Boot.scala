@@ -38,10 +38,7 @@ object Boot extends App {
 
     // setup boiler
     val settings = new BoilerSettings(
-        dureeFonctionnementVis = 3 seconds,
         dureeArretVis = 20 seconds,
-        dureePostFonctionnementBruleur = 5 seconds,
-        dureeModeRalenti = 3 minutes,
         dureeRepos = 5 minutes,
         temperatureConsigne = temperatureConsigne)
     val boiler = system.actorOf(Props(new Boiler(settings)), "boiler")

@@ -24,7 +24,7 @@ class GPIOEngineDriver extends Actor  {
     /**
       * akka setup
       */
-    val boiler = context.actorSelection("../boiler")
+    val engineCyclesManager = context.actorSelection("../engineCyclesManager")
     val reportHandler = context.actorSelection("../reportHandler")
 
     override def receive = {
@@ -81,8 +81,11 @@ class GPIOEngineDriver extends Actor  {
     // create and register gpio pin listener
     tremieSecu.addListener(new GpioPinListenerDigital() {
         override def handleGpioPinDigitalStateChangeEvent(event: GpioPinDigitalStateChangeEvent) = {
-            // display pin state on console
-            System.out.println(" --> GPIO PIN STATE CHANGE: " + event.getPin() + " = " + event.getState());
+            if(tremieSecu.isHigh){
+                reportHandler ! BourrageTremie
+                engineCyclesManager ! BourrageTremie
+            }
+
         }
     })
 
@@ -90,7 +93,10 @@ class GPIOEngineDriver extends Actor  {
     bruleurSecu.addListener(new GpioPinListenerDigital() {
         override def handleGpioPinDigitalStateChangeEvent(event: GpioPinDigitalStateChangeEvent) = {
             // display pin state on console
-            System.out.println(" --> GPIO PIN STATE CHANGE: " + event.getPin() + " = " + event.getState());
+            if(bruleurSecu.isHigh) {
+                reportHandler ! BourrageBruleur
+                engineCyclesManager ! BourrageBruleur
+            }
         }
     })
 

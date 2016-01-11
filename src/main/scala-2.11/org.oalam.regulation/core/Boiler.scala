@@ -6,14 +6,8 @@ import akka.event.Logging
 import scala.concurrent.duration._
 
 
-case class BoilerSettings(dureeFonctionnementVis: FiniteDuration = 3 seconds,
-                          dureeArretVis: FiniteDuration = 20 seconds,
-                          dureePostFonctionnementBruleur: FiniteDuration = 5 seconds,
+case class BoilerSettings(dureeArretVis: FiniteDuration = 20 seconds,
                           temperatureConsigne: Float = 75.0f,
-                          postCirculationCirculateur: FiniteDuration = 4 minutes,
-                          postCirculationVentilateur: FiniteDuration = 50 seconds,
-                          tempsFonctionnementRalenti: FiniteDuration = 2 minutes,
-                          dureeModeRalenti: FiniteDuration = 2 minutes,
                           dureeRepos: FiniteDuration = 5 minutes)
 
 
@@ -21,6 +15,17 @@ case class BoilerSettings(dureeFonctionnementVis: FiniteDuration = 3 seconds,
   * La chaudière à granulés
   */
 class Boiler(var settings: BoilerSettings) extends Actor {
+
+
+    /**
+      * Les paramètres constants
+      */
+    val BURNER_ENGINE_RUNNING_POST_DURATION = 5 seconds
+    val HEATING_MODE_ENGINES_RUNNING_DURATION = 3 seconds
+    val SLOWDOWN_MODE_FAN_RUNNING_DURATION = 50 seconds
+    val SLOWDOWN_MODE_ENGINES_RUNNING_DURATION = 2 minutes
+
+
 
     val log = Logging(context.system, this)
     var lastStateChangeDate = System.currentTimeMillis()
@@ -36,7 +41,6 @@ class Boiler(var settings: BoilerSettings) extends Actor {
     override def receive = {
 
         case TemperatureCrossThresholdUp(threshold: Float, currentTemperature: Float) =>
-            log.debug(s"got TemperatureCrossThresholdUp(threshold: $threshold, currentTemperature: $currentTemperature )")
 
             /**
               * démarrage circulateur si la température dépasse 40°
@@ -54,7 +58,7 @@ class Boiler(var settings: BoilerSettings) extends Actor {
 
 
             /**
-              * démarrage laddomat si la température dépasse 60°
+              * démarrage laddomat si la température dépasse 90°
               */
             if (threshold == 90) {
                 reportHandler ! TemperatureTooHigh(currentTemperature)
@@ -64,20 +68,22 @@ class Boiler(var settings: BoilerSettings) extends Actor {
             }
 
 
+
+        /**
+          * seuil de temperature mini de fonctionnement
+          *
+          * 1. arret circulateur si la température repasse en-dessous de 40°
+          * 2. si au-dela de 30' de fonctionnement la temperature descend en dessous de 30°
+          * la chaudiere se verouille
+          */
         case TemperatureCrossThresholdDown(threshold: Float, currentTemperature: Float) =>
             log.debug(s"got TemperatureCrossThresholdDown(threshold: $threshold, currentTemperature: $currentTemperature )")
 
-            /**
-              * arret circulateur si la température repasse en-dessous de 40°
-              */
+
             if (threshold == 40)
                 engineDriver ! StopEngine(BoilerEngine.Vanne4V)
 
-            /**
-              * seuil de temperature mini de fonctionnement
-              * si au-dela de 30' de fonctionnement la temperature descend en dessous de 30 degre
-              * la chaudiere se verouille
-              */
+
             if (threshold == 30) {
                 log.warning(s"currentTemperature: $currentTemperature < 30°C => verouillage chaudiere")
                 reportHandler ! TemperatureTooLow(currentTemperature)
@@ -86,25 +92,33 @@ class Boiler(var settings: BoilerSettings) extends Actor {
                 engineDriver ! StopEngine(BoilerEngine.Vanne4V)
             }
 
-
+        /**
+          * La zone haute de température de consigne est atteinte
+          * il faut passer en mode ralenti
+          */
         case TemperatureCrossConsigneUp(tempConsigne: Float, currentTemperature: Float) =>
             if (currentTemperature < 90) {
-                engineCyclesManager ! StartSlowMotionCycle(
-                    settings.dureeRepos,
-                    settings.dureeModeRalenti,
-                    settings.dureeFonctionnementVis,
-                    settings.dureeModeRalenti,
-                    settings.dureePostFonctionnementBruleur)
+                engineCyclesManager ! StartSlowMotionCycle(settings.dureeRepos)
             }
 
 
+        /**
+          * La zone basse de température de consigne est atteinte
+          * il faut relancer des cycles de chauffe
+          */
         case TemperatureCrossConsigneDown(tempConsigne: Float, currentTemperature: Float) =>
             if (currentTemperature < 90)
-                engineCyclesManager ! StartBurningCycle(settings.dureeFonctionnementVis, settings.dureeArretVis, settings.dureePostFonctionnementBruleur)
+                engineCyclesManager ! StartBurningCycle(
+                    HEATING_MODE_ENGINES_RUNNING_DURATION,
+                    settings.dureeArretVis,
+                    BURNER_ENGINE_RUNNING_POST_DURATION)
 
 
         case BoilerStart =>
-            engineCyclesManager ! StartBurningCycle(settings.dureeFonctionnementVis, settings.dureeArretVis, settings.dureePostFonctionnementBruleur)
+            engineCyclesManager ! StartBurningCycle(
+                HEATING_MODE_ENGINES_RUNNING_DURATION,
+                settings.dureeArretVis,
+                BURNER_ENGINE_RUNNING_POST_DURATION)
 
         case BoilerStop =>
             engineCyclesManager ! StopBurningCycle

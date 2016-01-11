@@ -36,27 +36,29 @@ package object core {
 
     case class StartBurningCycle(delayOn: FiniteDuration,
                                  delayOff: FiniteDuration,
-                                 additionnalDelay: FiniteDuration,
-                                 remainingCycles: Int = -1) extends EngineAction
+                                 additionnalDelay: FiniteDuration) extends EngineAction
 
     case class StopBurningCycle() extends EngineAction
 
     case class StopCycleTremie(delayOn: FiniteDuration,
                                delayOff: FiniteDuration,
-                               additionnalDelay: FiniteDuration,
-                               remainingCycles: Int = -1) extends EngineAction
+                               additionnalDelay: FiniteDuration) extends EngineAction
 
     case class StopCycleBruleur() extends EngineAction
 
-    case class StartSlowMotionCycle(slowMotionCycleDuration: FiniteDuration,
-                                    initialIdleDelay: FiniteDuration,
-                                    delayOn: FiniteDuration,
-                                    delayOff: FiniteDuration,
-                                    additionnalDelay: FiniteDuration)
+    case class StartSlowMotionCycle(restDuration: FiniteDuration)
 
     case class StartEngine(engine: BoilerEngine) extends EngineAction
 
     case class StopEngine(engine: BoilerEngine) extends EngineAction
+
+
+    /**
+      * Engine Events
+      */
+    sealed trait EngineEvent
+    case class BourrageBruleur() extends EngineEvent
+    case class BourrageTremie() extends EngineEvent
 
     /**
       * Boiler Actions
