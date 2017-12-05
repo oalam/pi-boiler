@@ -10,10 +10,8 @@ import scala.concurrent.duration._
   * il lance des évènements lorsque certains seuils sont franchis
   *
   * @param sensor
-  * @param tempConsigne
   */
-class TemperatureEventHandler(sensor: TemperatureSensor,
-                              tempConsigne: Float = 70.0f) extends Actor {
+class TemperatureEventHandler(sensor: TemperatureSensor) extends Actor {
     val log = Logging(context.system, this)
 
     import context._
@@ -30,6 +28,7 @@ class TemperatureEventHandler(sensor: TemperatureSensor,
 
     var lastTemperature = 0.0f
     var lastTemperatureOverConsigneTime = 0L
+    var tempConsigne = 75.0f
 
     override def preStart = {
         println("my path is: " + context.self.path)
@@ -37,6 +36,9 @@ class TemperatureEventHandler(sensor: TemperatureSensor,
 
 
     override def receive = {
+
+        case BoilerUpdateSettings(settings: BoilerSettings) =>
+            tempConsigne = settings.temperatureConsigne
 
         case "tick" =>
             val temp = sensor.measure("temperatureEauSortie")

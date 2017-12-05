@@ -22,16 +22,18 @@ class EngineCyclesManager extends Actor {
 
     val log = Logging(context.system, this)
 
-    val lastDate = System.currentTimeMillis()
+    var lastDate = 0L
     var stopTremieScheduler: Cancellable = null
     var stopBruleurScheduler: Cancellable = null
     var stopVentiloScheduler: Cancellable = null
     var mainCycleScheduler: Cancellable = null
 
 
+
     implicit val resolveTimeout = Timeout(5 seconds)
     val reportHandler = Await.result(context.actorSelection("../reportHandler").resolveOne(), resolveTimeout.duration)
     val engineDriver = Await.result(context.actorSelection("../engineDriver").resolveOne(), resolveTimeout.duration)
+    val boiler = Await.result(context.actorSelection("../boiler").resolveOne(), resolveTimeout.duration)
 
 
     def cleanupSchedulers() = {
@@ -47,6 +49,8 @@ class EngineCyclesManager extends Actor {
         engineDriver ! StopEngine(BoilerEngine.Bruleur)
         engineDriver ! StopEngine(BoilerEngine.Tremie)
         engineDriver ! StopEngine(BoilerEngine.Ventilo)
+
+        lastDate == 0
     }
 
     override def receive = {
@@ -56,37 +60,44 @@ class EngineCyclesManager extends Actor {
           * démarre un cycle de ralenti
           */
         case StartSlowMotionCycle(restDuration: FiniteDuration) =>
-            reportHandler ! StartSlowMotionCycle(restDuration)
-            cleanupSchedulers()
+            if(lastDate == 0 ||  System.currentTimeMillis() - lastDate > restDuration.toMillis){
+                reportHandler ! StartSlowMotionCycle(restDuration)
+                cleanupSchedulers()
 
+                // démarrage des 2 vis sans fin + ventilo
+                engineDriver ! StartEngine(BoilerEngine.Bruleur)
+                engineDriver ! StartEngine(BoilerEngine.Tremie)
+                engineDriver ! StartEngine(BoilerEngine.Ventilo)
 
-            // démarrage des 2 vis sans fin + ventilo
-            engineDriver ! StartEngine(BoilerEngine.Bruleur)
-            engineDriver ! StartEngine(BoilerEngine.Tremie)
-            engineDriver ! StartEngine(BoilerEngine.Ventilo)
+                // planifie l'arret des moteurs
+                stopTremieScheduler = context.system.scheduler.scheduleOnce(
+                    SLOWDOWN_MODE_ENGINES_RUNNING_DURATION,
+                    engineDriver,
+                    StopEngine(BoilerEngine.Tremie))
 
-            // planifie l'arret des moteurs
-            stopTremieScheduler = context.system.scheduler.scheduleOnce(
-                120 seconds,
-                engineDriver,
-                StopEngine(BoilerEngine.Tremie))
+                stopBruleurScheduler = context.system.scheduler.scheduleOnce(
+                    SLOWDOWN_MODE_ENGINES_RUNNING_DURATION + BURNER_ENGINE_RUNNING_POST_DURATION,
+                    engineDriver,
+                    StopEngine(BoilerEngine.Bruleur))
 
-            stopBruleurScheduler = context.system.scheduler.scheduleOnce(
-                125 seconds,
-                engineDriver,
-                StopEngine(BoilerEngine.Bruleur))
+                stopVentiloScheduler = context.system.scheduler.scheduleOnce(
+                    SLOWDOWN_MODE_FAN_RUNNING_DURATION,
+                    engineDriver,
+                    StopEngine(BoilerEngine.Ventilo))
 
-            stopVentiloScheduler = context.system.scheduler.scheduleOnce(
-                50 seconds,
-                engineDriver,
-                StopEngine(BoilerEngine.Ventilo))
+                // planifie le démarrage d'un cycle nouveau cycle de ralenti
+                mainCycleScheduler =
+                    context.system.scheduler.scheduleOnce(
+                        restDuration,
+                        self,
+                        StartSlowMotionCycle(restDuration))
 
-            // planifie le démarrage d'un cycle nouveau cycle de ralenti
-            mainCycleScheduler =
-                context.system.scheduler.scheduleOnce(
-                    restDuration,
-                    self,
-                    StartSlowMotionCycle(restDuration))
+                lastDate = System.currentTimeMillis()
+            }else{
+                log.debug(s"won't start StartSlowMotionCycle because lastDate=$lastDate or restDuration=$restDuration and " +
+                    s"System.currentTimeMillis() - lastDate = ${System.currentTimeMillis() - lastDate}")
+            }
+
 
 
         /**
@@ -116,12 +127,39 @@ class EngineCyclesManager extends Actor {
                     StopEngine(BoilerEngine.Bruleur))
 
             // planifie le démarrage d'un nouveau cycle
+
+           // val settings = boiler.asInstanceOf[Boiler].settings
             mainCycleScheduler =
                 context.system.scheduler.scheduleOnce(
                     delayOn + delayOff,
                     self,
                     StartBurningCycle(delayOn, delayOff, additionnalDelay))
 
+
+        /**
+          * rempli le bruleur de grains pour l'allumage
+          */
+        case LoadPellets =>
+            reportHandler ! LoadPellets
+            cleanupSchedulers()
+            // démarrage des 2 vis sans fin + ventilo
+            engineDriver ! StartEngine(BoilerEngine.Bruleur)
+            engineDriver ! StartEngine(BoilerEngine.Tremie)
+            engineDriver ! StopEngine(BoilerEngine.Ventilo)
+
+            // planifie l'arret de la trémie
+            stopTremieScheduler =
+                context.system.scheduler.scheduleOnce(
+                    PELLETS_LOADING_DURATION,
+                    engineDriver,
+                    StopEngine(BoilerEngine.Tremie))
+
+            // planifie l'arret du bruleur apres un delai de post fonctionnement
+            stopBruleurScheduler =
+                context.system.scheduler.scheduleOnce(
+                    PELLETS_LOADING_DURATION + BURNER_ENGINE_RUNNING_POST_DURATION,
+                    engineDriver,
+                    StopEngine(BoilerEngine.Bruleur))
 
         /**
           * interrompt le cycle de combustion en cours

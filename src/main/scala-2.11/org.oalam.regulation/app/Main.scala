@@ -50,13 +50,13 @@ object Main extends App {
 
     // setup temperature event handler
     val sensor = new TemperatureSensor(rootPath = "src/main/resources")
-    val temperatureEventHandler = system.actorOf(Props(new TemperatureEventHandler(sensor, 70.0f)), "temperatureEventHandler")
+    val temperatureEventHandler = system.actorOf(Props(new TemperatureEventHandler(sensor)), "temperatureEventHandler")
 
     // setup boiler
     val settings = new BoilerSettings(
-        dureeArretVis = 5000 milliseconds,
+        delayOff = 5000 milliseconds,
         temperatureConsigne = 70,
-        dureeRepos = 10 seconds)
+        restDuration = 10 seconds)
     val boiler = system.actorOf(Props(new Boiler(settings)), "boiler")
     boiler ! BoilerStart
 

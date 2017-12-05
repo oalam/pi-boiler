@@ -71,28 +71,26 @@ class GPIOEngineDriver extends Actor  {
     private val tremieSecu = gpio.provisionDigitalInputPin(RaspiPin.GPIO_05, "tremieSecu", PinPullResistance.PULL_UP)
     private val bruleurSecu = gpio.provisionDigitalInputPin(RaspiPin.GPIO_06, "bruleurSecu", PinPullResistance.PULL_UP)
 
-    // set shutdown state for these pin
+    // tout le monde est éteint sauf la Vanne 4V
     bruleur.setShutdownOptions(true, PinState.LOW)
     tremie.setShutdownOptions(true, PinState.LOW)
     ventilo.setShutdownOptions(true, PinState.LOW)
-    vanne4V.setShutdownOptions(true, PinState.LOW)
+    vanne4V.setShutdownOptions(true, PinState.HIGH)
     laddomat.setShutdownOptions(true, PinState.LOW)
 
-    // create and register gpio pin listener
+    // surveille le bourage de la trémie
     tremieSecu.addListener(new GpioPinListenerDigital() {
         override def handleGpioPinDigitalStateChangeEvent(event: GpioPinDigitalStateChangeEvent) = {
             if(tremieSecu.isHigh){
                 reportHandler ! BourrageTremie
                 engineCyclesManager ! BourrageTremie
             }
-
         }
     })
 
-    // create and register gpio pin listener
+    // surveille le bourrage du brûleur
     bruleurSecu.addListener(new GpioPinListenerDigital() {
         override def handleGpioPinDigitalStateChangeEvent(event: GpioPinDigitalStateChangeEvent) = {
-            // display pin state on console
             if(bruleurSecu.isHigh) {
                 reportHandler ! BourrageBruleur
                 engineCyclesManager ! BourrageBruleur

@@ -21,7 +21,6 @@ object Boot extends App {
     // we need an ActorSystem to host our application in
     implicit val system = ActorSystem("pi-boiler")
 
-    val temperatureConsigne = 75.0f
     /**
       * Démmarrage des acteurs de la régulation
       */
@@ -32,15 +31,15 @@ object Boot extends App {
     val engineCyclesManager = system.actorOf(Props(new EngineCyclesManager()), "engineCyclesManager")
 
     // setup temperature event handler
-    val sensor = new TemperatureSensor()
     val temperatureEventHandler =
-        system.actorOf(Props(new TemperatureEventHandler(sensor, temperatureConsigne)), "temperatureEventHandler")
+        system.actorOf(Props(new TemperatureEventHandler(new TemperatureSensor())), "temperatureEventHandler")
+
 
     // setup boiler
     val settings = new BoilerSettings(
-        dureeArretVis = 20 seconds,
-        dureeRepos = 5 minutes,
-        temperatureConsigne = temperatureConsigne)
+        delayOff = DEFAULT_ENGINES_REST_DURATION,
+        restDuration = DEFAULT_SLOWNDOWN_REST_DURATION,
+        temperatureConsigne = DEFAULT_CONSIGNE_TEMPERATURE)
     val boiler = system.actorOf(Props(new Boiler(settings)), "boiler")
 
 

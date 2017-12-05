@@ -41,5 +41,3 @@ class TemperatureSensor(rootPath: String = "/sys/bus/w1/devices") {
 }
 
 
-
-

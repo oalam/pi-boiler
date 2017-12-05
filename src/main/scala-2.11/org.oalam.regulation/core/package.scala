@@ -2,12 +2,25 @@ package org.oalam.regulation
 
 import org.oalam.regulation.core.BoilerEngine._
 
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 /**
   * Created by tom on 29/12/15.
   */
 package object core {
+
+    /**
+      * Les paramètres constants
+      */
+    val BURNER_ENGINE_RUNNING_POST_DURATION = 5 seconds
+    val HEATING_MODE_ENGINES_RUNNING_DURATION = 3 seconds
+    val DEFAULT_CONSIGNE_TEMPERATURE = 75
+    val DEFAULT_ENGINES_REST_DURATION = 20 seconds
+    val DEFAULT_SLOWNDOWN_REST_DURATION = 60 minutes // previous 50
+    val SLOWDOWN_MODE_FAN_RUNNING_DURATION = 30 seconds
+    val SLOWDOWN_MODE_ENGINES_RUNNING_DURATION = 50 seconds // previous 90
+    val PELLETS_LOADING_DURATION = 50 seconds
+
 
     /**
       * Temerature events
@@ -52,12 +65,16 @@ package object core {
 
     case class StopEngine(engine: BoilerEngine) extends EngineAction
 
+    case class LoadPellets() extends EngineAction
+
 
     /**
       * Engine Events
       */
     sealed trait EngineEvent
+
     case class BourrageBruleur() extends EngineEvent
+
     case class BourrageTremie() extends EngineEvent
 
     /**

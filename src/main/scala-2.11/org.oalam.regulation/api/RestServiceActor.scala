@@ -5,12 +5,13 @@ import org.oalam.regulation.core._
 import org.slf4j.LoggerFactory
 import spray.http.{AllOrigins, HttpHeaders, StatusCodes}
 import spray.routing.HttpService
+
 import scala.concurrent.duration._
 
 
 // we don't implement our route structure directly in the service actor because
 // we want to be able to test it independently, without having to spin up an actor
-class RestServiceActor extends Actor with HttpService {
+class   RestServiceActor extends Actor with HttpService {
 
 
     // the HttpService trait defines only one abstract member, which
@@ -27,6 +28,10 @@ class RestServiceActor extends Actor with HttpService {
     val logger = LoggerFactory.getLogger(this.getClass.toString)
 
 
+    var lastTemperature = DEFAULT_CONSIGNE_TEMPERATURE
+    var lastDelayOff = DEFAULT_ENGINES_REST_DURATION.toSeconds
+    var lastRestDuration = DEFAULT_SLOWNDOWN_REST_DURATION.toMinutes
+
     val queryRoute = {
         get {
             path("action") {
@@ -37,18 +42,25 @@ class RestServiceActor extends Actor with HttpService {
 
 
                     actionType match {
+                        case "load" => boiler ! LoadPellets
                         case "start" => boiler ! BoilerStart
                         case "stop" => boiler ! BoilerStop
                         case "shutdown" => boiler ! BoilerShutdown
                         case "set" =>
-                            val temperature: Int = Integer.parseInt(params.getOrElse("temperature", "70"))
-                            val delayOff: Int = Integer.parseInt(params.getOrElse("delayOff", "20"))
-                            val restDuration: Int = Integer.parseInt(params.getOrElse("restDuration", "5"))
+                            val temperature: Int = Integer.parseInt(params.getOrElse("temperature", lastTemperature.toString))
+                            val delayOff: Int = Integer.parseInt(params.getOrElse("delayOff", lastDelayOff.toString))
+                            val restDuration: Int = Integer.parseInt(params.getOrElse("restDuration", lastRestDuration.toString))
 
                             val settings = new BoilerSettings(
-                                dureeArretVis = delayOff seconds,
-                                dureeRepos =  restDuration minutes,
+                                delayOff = delayOff seconds,
+                                restDuration = restDuration minutes,
                                 temperatureConsigne = temperature)
+
+
+                            lastTemperature = temperature
+                            lastDelayOff = delayOff
+                            lastRestDuration = restDuration
+
 
                             boiler ! BoilerUpdateSettings(settings)
                         case _ => logger.info("nothing to do")

@@ -6,9 +6,9 @@ import akka.event.Logging
 import scala.concurrent.duration._
 
 
-case class BoilerSettings(dureeArretVis: FiniteDuration = 20 seconds,
+case class BoilerSettings(delayOff: FiniteDuration = 20 seconds,
                           temperatureConsigne: Float = 75.0f,
-                          dureeRepos: FiniteDuration = 5 minutes)
+                          restDuration: FiniteDuration = 20 minutes)
 
 
 /**
@@ -17,13 +17,7 @@ case class BoilerSettings(dureeArretVis: FiniteDuration = 20 seconds,
 class Boiler(var settings: BoilerSettings) extends Actor {
 
 
-    /**
-      * Les paramètres constants
-      */
-    val BURNER_ENGINE_RUNNING_POST_DURATION = 5 seconds
-    val HEATING_MODE_ENGINES_RUNNING_DURATION = 3 seconds
-    val SLOWDOWN_MODE_FAN_RUNNING_DURATION = 50 seconds
-    val SLOWDOWN_MODE_ENGINES_RUNNING_DURATION = 2 minutes
+
 
 
 
@@ -32,7 +26,15 @@ class Boiler(var settings: BoilerSettings) extends Actor {
     val engineCyclesManager = context.actorSelection("../engineCyclesManager")
     val reportHandler = context.actorSelection("../reportHandler")
     val engineDriver = context.actorSelection("../engineDriver")
+    val temperatureEventHandler = context.actorSelection("../temperatureEventHandler")
 
+
+    private def overHeating(currentTemperature: Float) = {
+        reportHandler ! TemperatureTooHigh(currentTemperature)
+        engineCyclesManager ! StopBurningCycle
+        engineDriver ! StartEngine(BoilerEngine.Laddomat)
+        engineDriver ! StartEngine(BoilerEngine.Vanne4V)
+    }
 
     override def preStart = {
         log.info("starting : " + context.self.path)
@@ -61,10 +63,7 @@ class Boiler(var settings: BoilerSettings) extends Actor {
               * démarrage laddomat si la température dépasse 90°
               */
             if (threshold == 90) {
-                reportHandler ! TemperatureTooHigh(currentTemperature)
-                engineCyclesManager ! StopBurningCycle
-                engineDriver ! StartEngine(BoilerEngine.Laddomat)
-                engineDriver ! StartEngine(BoilerEngine.Vanne4V)
+                overHeating(currentTemperature)
             }
 
 
@@ -80,8 +79,8 @@ class Boiler(var settings: BoilerSettings) extends Actor {
             log.debug(s"got TemperatureCrossThresholdDown(threshold: $threshold, currentTemperature: $currentTemperature )")
 
 
-            if (threshold == 40)
-                engineDriver ! StopEngine(BoilerEngine.Vanne4V)
+          /*  if (threshold == 40)
+                engineDriver ! StopEngine(BoilerEngine.Vanne4V)*/
 
 
             if (threshold == 30) {
@@ -89,7 +88,7 @@ class Boiler(var settings: BoilerSettings) extends Actor {
                 reportHandler ! TemperatureTooLow(currentTemperature)
                 engineCyclesManager ! StopBurningCycle
                 engineDriver ! StopEngine(BoilerEngine.Laddomat)
-                engineDriver ! StopEngine(BoilerEngine.Vanne4V)
+           //     engineDriver ! StopEngine(BoilerEngine.Vanne4V)
             }
 
         /**
@@ -98,7 +97,9 @@ class Boiler(var settings: BoilerSettings) extends Actor {
           */
         case TemperatureCrossConsigneUp(tempConsigne: Float, currentTemperature: Float) =>
             if (currentTemperature < 90) {
-                engineCyclesManager ! StartSlowMotionCycle(settings.dureeRepos)
+                engineCyclesManager ! StartSlowMotionCycle(settings.restDuration)
+            }else{
+                overHeating(currentTemperature)
             }
 
 
@@ -110,14 +111,18 @@ class Boiler(var settings: BoilerSettings) extends Actor {
             if (currentTemperature < 90)
                 engineCyclesManager ! StartBurningCycle(
                     HEATING_MODE_ENGINES_RUNNING_DURATION,
-                    settings.dureeArretVis,
+                    settings.delayOff,
                     BURNER_ENGINE_RUNNING_POST_DURATION)
+            else{
+                overHeating(currentTemperature)
+            }
 
 
         case BoilerStart =>
+            engineDriver ! StartEngine(BoilerEngine.Vanne4V)
             engineCyclesManager ! StartBurningCycle(
                 HEATING_MODE_ENGINES_RUNNING_DURATION,
-                settings.dureeArretVis,
+                settings.delayOff,
                 BURNER_ENGINE_RUNNING_POST_DURATION)
 
         case BoilerStop =>
@@ -134,10 +139,12 @@ class Boiler(var settings: BoilerSettings) extends Actor {
 
         case BoilerUpdateSettings(newSettings: BoilerSettings) =>
             settings = newSettings
+            temperatureEventHandler ! BoilerUpdateSettings(settings)
             reportHandler ! BoilerUpdateSettings(settings)
-            self ! BoilerStop
-            Thread.sleep(500)
-            self ! BoilerStart
+
+
+        case LoadPellets =>
+            engineCyclesManager ! LoadPellets
 
     }
 

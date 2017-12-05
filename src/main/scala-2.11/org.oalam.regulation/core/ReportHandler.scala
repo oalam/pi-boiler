@@ -109,6 +109,10 @@ class ReportHandler extends Actor {
         case BourrageBruleur =>
             ElasticsearchAgent.dumpEngineEvent("BourrageBruleur")
             log.warning(s"BourrageBruleur")
+
+        case LoadPellets =>
+            ElasticsearchAgent.dumpEngineEvent("LoadPellets")
+            log.info(s"LoadPellets")
     }
 
 }
