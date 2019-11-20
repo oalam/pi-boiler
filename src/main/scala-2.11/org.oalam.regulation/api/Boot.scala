@@ -46,7 +46,7 @@ object Boot extends App {
     /**
       * Démmarrage du web service
       */
-    val host = "192.168.1.67"
+    val host = "192.168.1.12"
     //"localhost"//
     val port = 9000
 

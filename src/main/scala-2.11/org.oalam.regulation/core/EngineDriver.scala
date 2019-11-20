@@ -75,7 +75,7 @@ class GPIOEngineDriver extends Actor  {
     bruleur.setShutdownOptions(true, PinState.LOW)
     tremie.setShutdownOptions(true, PinState.LOW)
     ventilo.setShutdownOptions(true, PinState.LOW)
-    vanne4V.setShutdownOptions(true, PinState.HIGH)
+    vanne4V.setShutdownOptions(true, PinState.LOW)
     laddomat.setShutdownOptions(true, PinState.LOW)
 
     // surveille le bourage de la trémie

@@ -1,5 +1,7 @@
 
+# install
 
+sudo apt-get install wiringpi
 
 # Comment compiler le programme
 

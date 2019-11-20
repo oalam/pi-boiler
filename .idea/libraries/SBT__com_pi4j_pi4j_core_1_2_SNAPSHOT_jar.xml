@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="SBT: com.pi4j:pi4j-core:1.2-SNAPSHOT:jar">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/com.pi4j/pi4j-core/jars/pi4j-core-1.2-SNAPSHOT.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ivy2/cache/com.pi4j/pi4j-core/srcs/pi4j-core-1.2-SNAPSHOT-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
