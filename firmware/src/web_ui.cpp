@@ -24,6 +24,8 @@ struct Snapshot {
     float         consigne = 75.0f;
     uint32_t      delay_off_s = 20;
     uint32_t      rest_duration_min = 60;
+    float         consumption_today_kg = 0.0f;
+    float         consumption_total_kg = 0.0f;
 };
 Snapshot g_snapshot;
 
@@ -56,6 +58,7 @@ const char PAGE[] PROGMEM = R"HTML(<!DOCTYPE html>
   label { display: block; margin: 8px 0 2px; font-size: .8rem; opacity: .7; }
   input { width: 100%; padding: 8px; box-sizing: border-box; background: #2a2d34; color: #e6e6e6; border: 1px solid #3a3d44; border-radius: 6px; }
   .alerts { font-size: .8rem; opacity: .7; text-align: center; margin-top: 12px; }
+  .conso { font-size: .85rem; opacity: .7; text-align: center; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -84,6 +87,7 @@ const char PAGE[] PROGMEM = R"HTML(<!DOCTYPE html>
     <div style="margin-top:10px"><button onclick="applySettings()">Appliquer</button></div>
   </fieldset>
   <div class="alerts" id="alerts"></div>
+  <div class="conso" id="conso"></div>
 </div>
 <script>
 let editing = false;
@@ -100,6 +104,9 @@ async function refresh() {
       document.getElementById('e' + i).className = 'eng' + (s.engines[i] ? ' on' : '');
     document.getElementById('alerts').textContent =
       s.alertCount ? (s.alertCount + ' alerte(s) — dernière : ' + s.lastAlert) : 'aucune alerte';
+    document.getElementById('conso').textContent =
+      'Granulés — aujourd\'hui : ' + s.consoToday.toFixed(2)
+      + ' kg  ·  total : ' + s.consoTotal.toFixed(1) + ' kg';
     if (!editing) {
       document.getElementById('consigne').value = s.consigne;
       document.getElementById('delayOff').value = s.delayOff;
@@ -127,19 +134,21 @@ void handle_status(AsyncWebServerRequest* request) {
     s = g_snapshot;
     portEXIT_CRITICAL(&g_mux);
 
-    char buf[384];
+    char buf[448];
     snprintf(buf, sizeof(buf),
              "{\"state\":\"%s\",\"temp\":%.1f,"
              "\"engines\":[%s,%s,%s,%s,%s],"
              "\"alertCount\":%u,\"lastAlert\":\"%s\","
-             "\"consigne\":%.0f,\"delayOff\":%u,\"restDuration\":%u}",
+             "\"consigne\":%.0f,\"delayOff\":%u,\"restDuration\":%u,"
+             "\"consoToday\":%.2f,\"consoTotal\":%.2f}",
              state_name(s.state), s.temperature,
              s.engines[0] ? "true" : "false", s.engines[1] ? "true" : "false",
              s.engines[2] ? "true" : "false", s.engines[3] ? "true" : "false",
              s.engines[4] ? "true" : "false",
              static_cast<unsigned>(s.alert_count), alert_name(s.last_alert),
              s.consigne, static_cast<unsigned>(s.delay_off_s),
-             static_cast<unsigned>(s.rest_duration_min));
+             static_cast<unsigned>(s.rest_duration_min),
+             s.consumption_today_kg, s.consumption_total_kg);
     request->send(200, "application/json", buf);
 }
 
@@ -207,9 +216,10 @@ void webui_begin(boiler::BoilerController* controller,
     g_server.begin();
 }
 
-void webui_publish() {
+void webui_publish(float consumption_today_kg) {
     if (!g_controller) return;
     const boiler::BoilerSettings& set = g_controller->settings();
+    const float total_kg = g_controller->estimated_consumption_kg();
 
     portENTER_CRITICAL(&g_mux);
     g_snapshot.state = g_controller->state();
@@ -221,6 +231,8 @@ void webui_publish() {
     g_snapshot.consigne = set.consigne_celsius;
     g_snapshot.delay_off_s = set.delay_off_ms / 1000u;
     g_snapshot.rest_duration_min = set.rest_duration_ms / 60000u;
+    g_snapshot.consumption_today_kg = consumption_today_kg;
+    g_snapshot.consumption_total_kg = total_kg;
     portEXIT_CRITICAL(&g_mux);
 }
 

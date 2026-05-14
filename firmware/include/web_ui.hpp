@@ -26,7 +26,9 @@ void webui_begin(boiler::BoilerController* controller,
                  Esp32Actuators* actuators);
 
 // À appeler à chaque tour de loop() : met à jour l'instantané lu par l'UI.
-void webui_publish();
+// `consumption_today_kg` est calculé par l'hôte (il a l'horloge calendaire) ;
+// la consommation totale est lue directement sur le contrôleur.
+void webui_publish(float consumption_today_kg);
 
 // Drainé par loop() : récupère la prochaine requête en attente (false si vide).
 bool webui_next_request(WebRequest& out);

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chaudière</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: system-ui, sans-serif; margin: 0; background: #1b1d22; color: #e6e6e6; }
+  .wrap { max-width: 460px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1rem; font-weight: 600; opacity: .6; }
+  .temp { font-size: 3.6rem; font-weight: 700; text-align: center; line-height: 1; }
+  .temp small { font-size: 1.3rem; opacity: .5; }
+  .state { text-align: center; padding: 8px 0; border-radius: 8px; font-weight: 600; margin: 10px 0; background: #2a2d34; }
+  .state.Running, .state.Igniting { background: #1f5132; }
+  .state.Slowing { background: #4a3f15; }
+  .state.Overheating, .state.Locked { background: #5a1f1f; }
+  .engines { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 12px 0; }
+  .eng { text-align: center; font-size: .7rem; padding: 10px 2px; border-radius: 6px; background: #2a2d34; opacity: .55; }
+  .eng.on { background: #1f5132; opacity: 1; }
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+  button { padding: 15px; font-size: 1rem; border: 0; border-radius: 8px; background: #3a8c6e; color: #fff; }
+  button.warn { background: #a5533a; }
+  button:active { filter: brightness(1.2); }
+  .conso { text-align: center; font-size: .85rem; opacity: .7; margin-top: 6px; }
+  .status { text-align: center; font-size: .8rem; opacity: .5; margin-top: 10px; }
+  .status.off { color: #d77; opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Chaudière à granulés</h1>
+  <div class="temp"><span id="temp">--</span><small> °C</small></div>
+  <div id="state" class="state">--</div>
+  <div class="engines">
+    <div class="eng" id="e0">trémie</div>
+    <div class="eng" id="e1">brûleur</div>
+    <div class="eng" id="e2">ventilo</div>
+    <div class="eng" id="e3">circul.</div>
+    <div class="eng" id="e4">laddomat</div>
+  </div>
+  <div class="btns">
+    <button onclick="cmd('start')">Démarrer</button>
+    <button onclick="cmd('stop')">Arrêter</button>
+    <button onclick="cmd('load')">Amorcer</button>
+    <button class="warn" onclick="cmd('shutdown')">Arrêt complet</button>
+  </div>
+  <div class="conso" id="conso"></div>
+  <div class="status" id="status">connexion…</div>
+</div>
+<script>
+async function refresh() {
+  const s = document.getElementById('status');
+  try {
+    const d = await (await fetch('/api/status')).json();
+    document.getElementById('temp').textContent = d.temp.toFixed(1);
+    const st = document.getElementById('state');
+    st.textContent = d.state;
+    st.className = 'state ' + d.state;
+    for (let i = 0; i < 5; i++)
+      document.getElementById('e' + i).className = 'eng' + (d.engines[i] ? ' on' : '');
+    document.getElementById('conso').textContent =
+      'Granulés — aujourd\'hui : ' + d.consoToday.toFixed(2)
+      + ' kg · total : ' + d.consoTotal.toFixed(1) + ' kg';
+    s.textContent = 'à jour — ' + new Date().toLocaleTimeString();
+    s.className = 'status';
+  } catch (e) {
+    s.textContent = 'hors ligne';
+    s.className = 'status off';
+  }
+}
+function cmd(type) {
+  fetch('/api/command?type=' + type).then(refresh).catch(() => {});
+}
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

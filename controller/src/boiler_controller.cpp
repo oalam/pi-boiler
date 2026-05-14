@@ -19,6 +19,9 @@ BoilerSettings clamp_settings(BoilerSettings s) {
     s.rest_duration_ms = clamp_value(s.rest_duration_ms,
                                      params::REST_DURATION_MIN_MS,
                                      params::REST_DURATION_MAX_MS);
+    s.tremie_feed_rate_g_per_s = clamp_value(s.tremie_feed_rate_g_per_s,
+                                             params::FEED_RATE_MIN_G_PER_S,
+                                             params::FEED_RATE_MAX_G_PER_S);
     return s;
 }
 
@@ -30,7 +33,8 @@ BoilerController::BoilerController(IActuators& actuators, IReporter& reporter,
       reporter_(reporter),
       settings_(clamp_settings(settings)),
       state_(State::Stopped),
-      state_entered_at_(now_ms) {
+      state_entered_at_(now_ms),
+      runtime_sampled_at_(now_ms) {
     for (bool& e : engine_on_) e = false;
     // L'installation démarre dans un état sûr connu.
     actuators_.shutdown();
@@ -172,6 +176,12 @@ void BoilerController::transition(State to, uint64_t now_ms) {
 // --- Entrées --------------------------------------------------------------
 
 void BoilerController::tick(uint64_t now_ms) {
+    // Comptabilisation de la consommation : on intègre le temps de marche de la
+    // vis trémie (débit ~constant) sur la période écoulée depuis le dernier tick.
+    if (engine_on_[static_cast<int>(Engine::Tremie)])
+        tremie_run_ms_ += now_ms - runtime_sampled_at_;
+    runtime_sampled_at_ = now_ms;
+
     switch (state_) {
         case State::Igniting:
             service_burning_cycle(now_ms);
@@ -309,6 +319,12 @@ void BoilerController::handle_command(uint64_t now_ms, Command command) {
 void BoilerController::update_settings(uint64_t now_ms, const BoilerSettings& settings) {
     tick(now_ms);
     settings_ = clamp_settings(settings);
+}
+
+float BoilerController::estimated_consumption_kg() const {
+    // temps de marche (s) × débit (g/s) → grammes → kilogrammes
+    return static_cast<float>(tremie_run_ms_) / 1000.0f
+           * settings_.tremie_feed_rate_g_per_s / 1000.0f;
 }
 
 }  // namespace boiler

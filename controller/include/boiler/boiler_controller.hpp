@@ -50,6 +50,12 @@ public:
     float                 last_temperature() const { return last_temperature_; }
     const BoilerSettings& settings() const { return settings_; }
 
+    // Comptabilisation de la consommation de granulés.
+    // Le débit de la vis trémie étant ~constant, la consommation s'estime à
+    // partir de son temps de marche cumulé depuis la construction.
+    uint64_t tremie_run_ms() const { return tremie_run_ms_; }
+    float    estimated_consumption_kg() const;
+
 private:
     void transition(State to, uint64_t now_ms);
     void apply_engine(Engine engine, bool on);
@@ -70,6 +76,7 @@ private:
 
     State    state_;
     uint64_t state_entered_at_;
+    uint64_t runtime_sampled_at_;
     float    last_temperature_ = 0.0f;
 
     // États désirés des organes — sert à n'appeler set_engine() que sur changement.
@@ -91,6 +98,9 @@ private:
     // Surveillance de la sonde.
     uint32_t consecutive_failures_ = 0;
     bool     failure_alerted_ = false;
+
+    // Comptabilisation de la consommation (temps de marche cumulé de la trémie).
+    uint64_t tremie_run_ms_ = 0;
 };
 
 }  // namespace boiler

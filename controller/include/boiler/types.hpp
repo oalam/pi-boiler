@@ -50,6 +50,7 @@ struct BoilerSettings {
     float    consigne_celsius = 75.0f;                  // consigne eau de chauffage
     uint32_t delay_off_ms     = 20u * 1000u;            // arrêt des vis entre deux cycles de combustion
     uint32_t rest_duration_ms = 60u * 60u * 1000u;      // repos en mode ralenti entre deux relances
+    float    tremie_feed_rate_g_per_s = 8.7f;           // calibration : débit de la vis trémie en marche (g/s)
 };
 
 // Paramètres fixes de régulation, alignés sur la notice du régulateur MONEX d'origine.
@@ -90,6 +91,8 @@ constexpr uint32_t DELAY_OFF_MIN_MS     = 3u * 1000u;
 constexpr uint32_t DELAY_OFF_MAX_MS     = 90u * 1000u;
 constexpr uint32_t REST_DURATION_MIN_MS = 3u * 60u * 1000u;
 constexpr uint32_t REST_DURATION_MAX_MS = 90u * 60u * 1000u;
+constexpr float    FEED_RATE_MIN_G_PER_S = 1.0f;
+constexpr float    FEED_RATE_MAX_G_PER_S = 50.0f;
 
 }  // namespace params
 

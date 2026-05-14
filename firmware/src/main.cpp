@@ -77,6 +77,22 @@ void start_watchdog() {
     esp_task_wdt_add(nullptr);
 }
 
+// Suivi de la consommation par jour. Le cœur compte une consommation cumulée
+// (il n'a pas de calendrier) ; l'hôte la découpe par jour grâce à l'horloge NTP.
+// Tant que NTP n'a pas synchronisé, on retombe sur le cumul depuis le démarrage.
+float consumption_at_day_start_kg = 0.0f;
+int   tracked_yday = -1;
+
+float consumption_today_kg() {
+    struct tm now_tm;
+    if (getLocalTime(&now_tm, 0) && now_tm.tm_yday != tracked_yday) {
+        // Changement de jour (ou première synchro NTP) : nouvelle référence.
+        tracked_yday = now_tm.tm_yday;
+        consumption_at_day_start_kg = controller->estimated_consumption_kg();
+    }
+    return controller->estimated_consumption_kg() - consumption_at_day_start_kg;
+}
+
 }  // namespace
 
 void setup() {
@@ -107,6 +123,8 @@ void setup() {
         Serial.printf("IP: %s\n", WiFi.localIP().toString().c_str());
         if (MDNS.begin(HOSTNAME))
             Serial.printf("mDNS: http://%s.local\n", HOSTNAME);
+        // Horloge NTP : sert au découpage de la consommation par jour.
+        configTime(0, 0, "pool.ntp.org");
     } else {
         // La régulation ne dépend pas du réseau : on continue sans l'UI web.
         Serial.println("WiFi indisponible — la regulation tourne quand meme");
@@ -155,7 +173,7 @@ void loop() {
     }
 
     // 5. Publication de l'instantané pour l'UI web.
-    webui_publish();
+    webui_publish(consumption_today_kg());
 
     // Battement de cœur visible.
     digitalWrite(pins::STATUS_LED, (millis() / 500) % 2);

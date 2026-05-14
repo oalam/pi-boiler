@@ -305,10 +305,28 @@ void test_settings_are_clamped() {
     s.consigne_celsius = 200.0f;
     s.delay_off_ms = 1;
     s.rest_duration_ms = 999u * 60u * 1000u;
+    s.tremie_feed_rate_g_per_s = 999.0f;
     BoilerController c(act, rep, s, 0);
     CHECK(c.settings().consigne_celsius == 90.0f);
     CHECK(c.settings().delay_off_ms == 3000u);
     CHECK(c.settings().rest_duration_ms == 90u * 60u * 1000u);
+    CHECK(c.settings().tremie_feed_rate_g_per_s == 50.0f);
+}
+
+void test_consumption_tracks_tremie_runtime() {
+    FakeActuators act;
+    FakeReporter rep;
+    BoilerController c(act, rep, BoilerSettings{}, 0);  // débit par défaut 8,7 g/s
+    CHECK(c.tremie_run_ms() == 0);
+
+    c.handle_command(0, Command::Start);  // Igniting : vis trémie ON à t=0
+    c.tick(3000);                         // la trémie tourne 3 s puis s'arrête
+    c.tick(10000);                        // trémie arrêtée : plus d'accumulation
+    CHECK(c.tremie_run_ms() == 3000);
+
+    // 3 s × 8,7 g/s = 26,1 g ≈ 0,0261 kg
+    CHECK(c.estimated_consumption_kg() > 0.025f);
+    CHECK(c.estimated_consumption_kg() < 0.027f);
 }
 
 }  // namespace
@@ -335,5 +353,6 @@ int main() {
     RUN(test_stop_returns_to_stopped);
     RUN(test_load_pellets_in_stopped);
     RUN(test_settings_are_clamped);
+    RUN(test_consumption_tracks_tremie_runtime);
     return SUMMARY();
 }

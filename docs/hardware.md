@@ -49,6 +49,9 @@ de température. Le tout dans un coffret mural près de la chaudière.
 
 ## 2. Liste de pièces
 
+> Le **rôle détaillé de chaque pièce** (à quoi elle sert, quel risque elle
+> couvre) est en §7.
+
 ### Contrôleur
 
 | Réf.                                             | Description                                                                                              | Qté | ~Prix  |
@@ -337,3 +340,144 @@ via VPN/Tailscale sur le Pi — jamais en exposant l'ESP32.
 4. Contrôler la lecture de la sonde et des contacts thermiques avant d'autoriser
    la combustion.
 5. Première chauffe sous surveillance, STB et extincteur à portée.
+
+---
+
+## 7. Rôle détaillé de chaque pièce
+
+La §2 est la liste de courses ; cette section explique **pourquoi** chaque pièce
+est là et **quel risque elle couvre**. C'est de la documentation de référence —
+à lire avant de modifier le câblage ou de substituer un composant.
+
+### Le contrôleur
+
+**ESP32-DevKitC** — le cerveau. Il fait tourner le cœur de régulation
+([`../controller/`](../controller/README.md)) : il lit la sonde et les contacts,
+décide, pilote les organes, et sert l'interface web. Choisi pour son **watchdog
+matériel** (il se redémarre tout seul s'il se fige), son démarrage en moins
+d'une seconde et son WiFi intégré — trois choses que le Raspberry Pi ne garantit
+pas. Il ne touche jamais le 230 V : il ne fait que de la logique 3,3 V.
+
+**ULN2803A** — l'étage tampon entre l'ESP32 et la puissance. L'ESP32 ne peut pas
+fournir assez de courant pour commander directement 5 entrées de SSR/relais, et
+on ne veut pas exposer ses broches. Le ULN2803 fait l'interface : 5 petits
+transistors qui, sur ordre de l'ESP32, tirent les entrées des SSR/relais. Il
+**isole et protège** les broches de l'ESP32.
+
+**Résistances 10 kΩ (×5)** — sécurité au démarrage. Pendant le boot/reset de
+l'ESP32, ses broches sont en l'air (haute impédance). Sans ces résistances, les
+entrées du ULN2803 flotteraient et un organe pourrait s'enclencher tout seul.
+Les 10 kΩ tirent ces entrées à la masse : **tout reste à l'arrêt tant que
+l'ESP32 n'a pas pris la main**.
+
+**Condensateur 470 µF** — réservoir d'énergie sur le rail 5 V. À l'enclenchement
+des bobines de la carte relais, le 5 V plonge brièvement ; ce creux peut faire
+redémarrer l'ESP32. Le condensateur absorbe l'à-coup.
+
+### L'alimentation
+
+**PSU Mean Well 230 V → 5 V** — convertit le secteur en 5 V propre et stable
+pour toute la basse tension (ESP32, ULN, SSR, carte relais). Marque fiable et
+format rail DIN : c'est une pièce qui doit durer des années sans surveillance.
+
+**Disjoncteur C6A** — protection générale. Coupe tout en cas de court-circuit ou
+de surintensité, et sert d'interrupteur de maintenance. C'est le même calibre
+que préconisait la notice d'origine.
+
+### L'étage de puissance
+
+**2 SSR (relais statiques) — vis trémie et brûleur.** Les vis commutent toutes
+les ~30 s en fonctionnement : un relais mécanique (contacts physiques) s'userait
+en quelques mois. Le SSR commute électroniquement, **sans usure**. Bonus : il
+est *fail-safe* — pas de signal de commande = SSR ouvert = vis à l'arrêt. Le
+modèle « passage par zéro » commute au moment où la tension secteur passe par 0,
+ce qui réduit les perturbations.
+
+**Carte relais (3 voies) — ventilateur, circulateur, laddomat.** Ces organes
+commutent rarement (quelques fois par heure au plus) : le relais mécanique, moins
+cher, convient largement. La carte est opto-isolée : elle aussi maintient la
+barrière entre la logique et le 230 V.
+
+**Snubbers RC (×5)** — un par moteur. Un moteur est une charge inductive : à la
+coupure, il génère une surtension brutale. Sans amortissement, cette surtension
+**arque les contacts** (use les relais, stresse les SSR) et **émet des parasites**
+qui peuvent perturber l'ESP32. Le snubber (résistance + condensateur) absorbe
+cette énergie.
+
+**Varistance (MOV)** — optionnelle. Écrête les pics de tension venant du secteur
+(foudre, commutations sur le réseau) avant qu'ils n'atteignent l'électronique.
+
+### Les capteurs
+
+**Sonde DS18B20** — la mesure de température de l'eau, **l'entrée principale de
+toute la régulation**. C'est elle qui dit au cœur s'il faut chauffer, ralentir ou
+couper. Placée dans le doigt de gant existant de la chaudière. Une seconde sonde
+est conseillée : avec une seule, sa panne aveugle complètement la régulation
+(d'où aussi le repli sécurisé sur panne de sonde, côté logiciel).
+
+**Résistance 4,7 kΩ** — tirage haut du bus 1-Wire. Sans elle, le protocole de la
+DS18B20 ne fonctionne pas. Petit composant, mais indispensable.
+
+**Module opto PC817 + contacts thermiques des vis** — voir ci-dessous, c'est un
+point de sécurité majeur.
+
+#### Pourquoi lire les contacts thermiques des vis
+
+C'est **la seule fenêtre du contrôleur sur l'état réel du système
+d'alimentation en granulés**. Sans cette lecture, il pilote à l'aveugle.
+
+- **Ce qu'est le contact.** Chaque moteur de vis a une protection thermique
+  intégrée (un klixon dans le bobinage). Quand le moteur chauffe trop — parce
+  qu'il force — le contact s'ouvre.
+- **Pourquoi une vis force : le bourrage.** C'est *la* panne la plus courante
+  d'une chaudière à granulés. Les granulés font une voûte, un corps étranger se
+  coince, des granulés humides s'agglomèrent → la vis cale → le moteur tire un
+  courant excessif → il chauffe → la protection déclenche. La notice MONEX le
+  liste explicitement (« blocage ou disfonctionnement d'une ou des vis »).
+- **Pourquoi c'est de la sécurité, pas un détail.** La régulation des vis est en
+  **boucle ouverte** : le contrôleur commande un GPIO et *suppose* que la vis a
+  tourné. Le contact thermique est son **seul retour**. Si une vis bourre et
+  qu'il continue de la commander « ON » : le moteur reste calé à cuire, et
+  surtout **le contrôleur ne sait pas que la chaudière n'est plus alimentée
+  correctement** — il croit dérouler un cycle normal. Si c'est la vis trémie, le
+  feu s'éteint en silence ; si c'est la vis brûleur pendant que la trémie
+  continue, les granulés s'accumulent de façon incontrôlée près du foyer.
+- **Ce que la lecture apporte.** Quand un contact déclenche, le firmware appelle
+  `on_engine_fault()` et le cœur passe en `Locked` : tout s'arrête, une alerte
+  part. C'est la bonne réponse — un bourrage exige une **intervention physique**
+  (dégager, vérifier le moteur), ça ne se « réessaie » pas en logiciel. Le MONEX
+  d'origine faisait exactement cela ; ne pas le faire rendrait cette régulation
+  *moins* sûre que celle qu'elle remplace.
+- **Rôle du PC817.** Ces contacts sont câblés dans l'environnement des moteurs
+  (câbles longs, près du 230 V, parasités). Le PC817 est un optocoupleur : une
+  LED face à un phototransistor, **sans liaison électrique** entre les deux. Le
+  signal ne traverse que sous forme de lumière. Un défaut qui mettrait 230 V sur
+  ce câblage détruit au pire l'entrée de l'opto (composant à 0,20 €) — **jamais
+  l'ESP32** — et le bruit des câbles moteur ne se couple pas dans la logique.
+  C'est la version « entrée » de la même barrière galvanique que les SSR et la
+  carte relais assurent côté sorties.
+
+### La chaîne de sécurité matérielle
+
+**Thermostat de sécurité 95 °C (STB) à réarmement manuel** — la protection
+**ultime**, et la seule qui ne dépend d'aucun logiciel. Câblé en série sur
+l'alimentation des organes de combustion, il coupe physiquement les vis et le
+ventilateur si l'eau atteint 95 °C — **même si l'ESP32 est planté, mal
+programmé ou hors tension**. La surchauffe logicielle à 90 °C du cœur est un
+*premier* filet ; le STB est le filet qui ne cède jamais. Réarmement manuel
+volontaire : une surchauffe exige qu'un humain vienne constater avant que ça
+reparte.
+
+**Thermostat anti-condensation ~40 °C (optionnel)** — secours du circulateur. Si
+l'ESP32 est hors service alors que l'eau est chaude, ce thermostat fait tourner
+le circulateur tout seul pour évacuer la chaleur, évitant que la chaudière monte
+en température sans pouvoir se vider.
+
+### Connectique et coffret
+
+**Coffret IP65** — protège l'électronique de la poussière de granulés et de
+l'humidité ; c'est un environnement hostile. **Rail DIN et borniers** — montage
+propre, démontable, repérable. **Presse-étoupes** — maintiennent l'étanchéité là
+où les câbles entrent. **Séparateurs / barrières** — imposent la séparation
+physique entre la zone 230 V et la zone basse tension : aucun fil de puissance
+ne doit pouvoir toucher la logique, même desserré.
