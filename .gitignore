@@ -21,3 +21,7 @@ project/plugins/project/
 # C++ controller core
 controller/build/
 
+# Éditeurs / OS
+.DS_Store
+.obsidian/
+
