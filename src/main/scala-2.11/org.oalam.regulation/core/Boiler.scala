@@ -79,8 +79,8 @@ class Boiler(var settings: BoilerSettings) extends Actor {
             log.debug(s"got TemperatureCrossThresholdDown(threshold: $threshold, currentTemperature: $currentTemperature )")
 
 
-          /*  if (threshold == 40)
-                engineDriver ! StopEngine(BoilerEngine.Vanne4V)*/
+            if (threshold == 40)
+                engineDriver ! StopEngine(BoilerEngine.Vanne4V)
 
 
             if (threshold == 30) {

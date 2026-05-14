@@ -27,7 +27,7 @@ class TemperatureSensor(rootPath: String = "/sys/bus/w1/devices") {
             // extraction de la valeur
             if (lines(0).contains("YES")) {
                 val tempIndex = lines(1).indexOf("t=")
-                if (tempIndex != 1) {
+                if (tempIndex != -1) {
                     Some(lines(1).substring(tempIndex + 2).toFloat / 1000.0f)
                 }
                 else None

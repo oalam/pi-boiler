@@ -33,7 +33,6 @@ class EngineCyclesManager extends Actor {
     implicit val resolveTimeout = Timeout(5 seconds)
     val reportHandler = Await.result(context.actorSelection("../reportHandler").resolveOne(), resolveTimeout.duration)
     val engineDriver = Await.result(context.actorSelection("../engineDriver").resolveOne(), resolveTimeout.duration)
-    val boiler = Await.result(context.actorSelection("../boiler").resolveOne(), resolveTimeout.duration)
 
 
     def cleanupSchedulers() = {
@@ -50,7 +49,7 @@ class EngineCyclesManager extends Actor {
         engineDriver ! StopEngine(BoilerEngine.Tremie)
         engineDriver ! StopEngine(BoilerEngine.Ventilo)
 
-        lastDate == 0
+        lastDate = 0
     }
 
     override def receive = {
@@ -127,8 +126,6 @@ class EngineCyclesManager extends Actor {
                     StopEngine(BoilerEngine.Bruleur))
 
             // planifie le démarrage d'un nouveau cycle
-
-           // val settings = boiler.asInstanceOf[Boiler].settings
             mainCycleScheduler =
                 context.system.scheduler.scheduleOnce(
                     delayOn + delayOff,

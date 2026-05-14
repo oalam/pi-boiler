@@ -94,6 +94,17 @@ class ReportHandler extends Actor {
                 content = s"TemperatureTooLow : $currentTemperature => arret des vis sans fin et allumage circulateurs")
 
 
+        case TemperatureSensorFailure(consecutiveFailures: Int) =>
+            ElasticsearchAgent.dumpEngineEvent("TemperatureSensorFailure")
+            log.error(s"TemperatureSensorFailure : sonde muette depuis $consecutiveFailures lectures")
+            SmsAgent.sendMessage(s"pi-boiler: sonde de temperature muette ($consecutiveFailures lectures)")
+            MailAgent.sendMessage(
+                to = "bailet.thomas@gmail.com",
+                from = "pi-boiler@oalam.org",
+                subject = "boiler sensor failure",
+                content = s"La sonde de temperature ne repond plus depuis $consecutiveFailures lectures consecutives.")
+
+
         case BoilerUpdateSettings(settings: BoilerSettings) =>
             ElasticsearchAgent.dumpBoilerUpdateSettings(settings)
             log.info(s"BoilerUpdateSettings( settings :$settings)")

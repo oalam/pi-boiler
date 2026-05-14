@@ -17,9 +17,14 @@ package object core {
     val DEFAULT_CONSIGNE_TEMPERATURE = 75
     val DEFAULT_ENGINES_REST_DURATION = 20 seconds
     val DEFAULT_SLOWNDOWN_REST_DURATION = 60 minutes // previous 50
-    val SLOWDOWN_MODE_FAN_RUNNING_DURATION = 30 seconds
-    val SLOWDOWN_MODE_ENGINES_RUNNING_DURATION = 50 seconds // previous 90
+    val SLOWDOWN_MODE_ENGINES_RUNNING_DURATION = 2 minutes // manuel MONEX : 2 min de relance en ralenti
+    // le ventilateur couvre toute la phase d'alimentation + le post-fonctionnement brûleur
+    // pour éviter d'étouffer le feu en ralenti (granulés alimentés sans air de combustion)
+    val SLOWDOWN_MODE_FAN_RUNNING_DURATION = SLOWDOWN_MODE_ENGINES_RUNNING_DURATION + BURNER_ENGINE_RUNNING_POST_DURATION
     val PELLETS_LOADING_DURATION = 50 seconds
+
+    // nombre de lectures consécutives en échec avant de lever une alerte sonde
+    val SENSOR_FAILURE_ALERT_THRESHOLD = 5
 
 
     /**
@@ -40,6 +45,8 @@ package object core {
     case class TemperatureTooHigh(currentTemperature: Float) extends BoilerEvent
 
     case class TemperatureTooLow(currentTemperature: Float) extends BoilerEvent
+
+    case class TemperatureSensorFailure(consecutiveFailures: Int) extends BoilerEvent
 
 
     /**

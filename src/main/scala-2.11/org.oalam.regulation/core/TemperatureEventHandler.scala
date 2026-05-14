@@ -29,6 +29,7 @@ class TemperatureEventHandler(sensor: TemperatureSensor) extends Actor {
     var lastTemperature = 0.0f
     var lastTemperatureOverConsigneTime = 0L
     var tempConsigne = 75.0f
+    var consecutiveSensorFailures = 0
 
     override def preStart = {
         println("my path is: " + context.self.path)
@@ -43,6 +44,7 @@ class TemperatureEventHandler(sensor: TemperatureSensor) extends Actor {
         case "tick" =>
             val temp = sensor.measure("temperatureEauSortie")
             if (temp.isDefined) {
+                consecutiveSensorFailures = 0
                 val currentTemperature = temp.get
                 val currentTime = System.currentTimeMillis()
 
@@ -87,7 +89,7 @@ class TemperatureEventHandler(sensor: TemperatureSensor) extends Actor {
                   * la température de l'eau revient 3 degrés en-dessous de la température
                   * de consigne, on doit signaler la sortie du mode ralenti
                   */
-                if (currentTemperature <= 61 /*tempConsigne - 3*/ && lastTemperatureOverConsigneTime != 0) {
+                if (currentTemperature <= tempConsigne - 3 && lastTemperatureOverConsigneTime != 0) {
                     boiler ! TemperatureCrossConsigneDown(tempConsigne, currentTemperature)
                     reportHandler ! TemperatureCrossConsigneDown(tempConsigne, currentTemperature)
                     // reset du mode ralenti
@@ -101,6 +103,11 @@ class TemperatureEventHandler(sensor: TemperatureSensor) extends Actor {
 
                 lastTemperature = currentTemperature
                 lastDate = System.currentTimeMillis()
+            } else {
+                consecutiveSensorFailures += 1
+                log.warning(s"lecture sonde de température en échec ($consecutiveSensorFailures)")
+                if (consecutiveSensorFailures == SENSOR_FAILURE_ALERT_THRESHOLD)
+                    reportHandler ! TemperatureSensorFailure(consecutiveSensorFailures)
             }
     }
 }

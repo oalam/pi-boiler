@@ -1,0 +1,6 @@
+add_executable(test_boiler_controller test_boiler_controller.cpp)
+target_link_libraries(test_boiler_controller PRIVATE boiler_controller)
+target_include_directories(test_boiler_controller PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(test_boiler_controller PRIVATE -Wall -Wextra)
+
+add_test(NAME boiler_controller COMMAND test_boiler_controller)
