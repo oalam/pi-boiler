@@ -265,6 +265,15 @@ void BoilerController::on_sensor_failure(uint64_t now_ms) {
     }
 }
 
+void BoilerController::on_engine_fault(uint64_t now_ms) {
+    tick(now_ms);
+    reporter_.on_alert(Alert::EngineFault, last_temperature_);
+    // Un défaut de vis (thermique ou bourrage) exige une intervention physique :
+    // on verrouille, le réarmement se fait par une commande Start explicite.
+    if (state_ != State::Stopped && state_ != State::Locked)
+        transition(State::Locked, now_ms);
+}
+
 void BoilerController::handle_command(uint64_t now_ms, Command command) {
     tick(now_ms);
     switch (command) {

@@ -1,0 +1,12 @@
+{
+  "name": "boiler-controller",
+  "version": "0.1.0",
+  "description": "Cœur de régulation portable pour chaudière à granulés — machine à états C++ sans dépendance matérielle",
+  "keywords": "boiler, regulation, state-machine, embedded",
+  "frameworks": "*",
+  "platforms": "*",
+  "build": {
+    "srcDir": "src",
+    "includeDir": "include"
+  }
+}

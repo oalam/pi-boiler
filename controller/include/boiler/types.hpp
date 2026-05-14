@@ -41,6 +41,7 @@ enum class Alert {
     LockoutIgnitionFailed,   // allumage raté : pas de montée en température dans le délai imparti
     LockoutLowTemp,          // verrouillage : température basse prolongée en fonctionnement
     SensorFailure,           // sonde de température muette
+    EngineFault,             // défaut sur une vis (protection thermique / bourrage)
 };
 
 // Réglages modifiables par l'utilisateur. Les valeurs sont bornées par le

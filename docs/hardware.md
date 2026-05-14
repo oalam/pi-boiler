@@ -82,31 +82,31 @@ les trois organes à commutation rare (ventilateur, circulateur, laddomat).
 
 ### Capteurs
 
-| Réf. | Description | Qté | ~Prix |
-|------|-------------|-----|-------|
-| **Sonde DS18B20 étanche**, câble inox | Température eau de sortie, placée dans le doigt de gant existant de la chaudière. Plage −55…125 °C, large marge. | 1 (2 conseillé) | 3–6 €/u |
-| Résistance 4,7 kΩ | Tirage haut de la ligne 1-Wire. | 1 | — |
-| Module entrée opto-isolée (PC817) 2 canaux | Lecture des contacts thermiques (sans potentiel) des deux vis, isolée de l'environnement moteur. | 1 | 2–4 € |
+| Réf.                                       | Description                                                                                                      | Qté             | ~Prix   |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | --------------- | ------- |
+| **Sonde DS18B20 étanche**, câble inox      | Température eau de sortie, placée dans le doigt de gant existant de la chaudière. Plage −55…125 °C, large marge. | 1 (2 conseillé) | 3–6 €/u |
+| Résistance 4,7 kΩ                          | Tirage haut de la ligne 1-Wire.                                                                                  | 1               | —       |
+| Module entrée opto-isolée (PC817) 2 canaux | Lecture des contacts thermiques (sans potentiel) des deux vis, isolée de l'environnement moteur.                 | 1               | 2–4 €   |
 
 > Une seconde DS18B20 (redondance / recoupement) est peu coûteuse et supprime un
 > point de défaillance unique sur la mesure.
 
 ### Chaîne de sécurité matérielle
 
-| Réf. | Description | Qté | ~Prix |
-|------|-------------|-----|-------|
-| **Thermostat de sécurité à réarmement manuel (STB)** ~95–100 °C, à capillaire — type *IMIT*, *Jumo*, *Thermowatt* | Coupure **matérielle** des organes de combustion en cas de surchauffe, indépendante de l'ESP32. Réutiliser celui d'origine s'il est fonctionnel. | 1 | 10–20 € |
-| Thermostat mécanique anti-condensation ~40 °C, optionnel | Secours du circulateur : le fait tourner si l'eau est chaude même ESP32 hors service. | 1 | 8–15 € |
+| Réf.                                                                                                              | Description                                                                                                                                      | Qté | ~Prix   |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | --- | ------- |
+| **Thermostat de sécurité à réarmement manuel (STB)** ~95–100 °C, à capillaire — type *IMIT*, *Jumo*, *Thermowatt* | Coupure **matérielle** des organes de combustion en cas de surchauffe, indépendante de l'ESP32. Réutiliser celui d'origine s'il est fonctionnel. | 1   | 10–20 € |
+| Thermostat mécanique anti-condensation ~40 °C, optionnel                                                          | Secours du circulateur : le fait tourner si l'eau est chaude même ESP32 hors service.                                                            | 1   | 8–15 €  |
 
 ### Connectique & coffret
 
-| Réf. | Description | Qté | ~Prix |
-|------|-------------|-----|-------|
-| **Coffret IP65** polycarbonate/ABS + platine ou rail DIN, ~300×200×120 mm — type *Fibox*, *Spelsberg*, *Gewiss* | Boîtier mural étanche (environnement poussiéreux/chaud). | 1 | 20–40 € |
-| Rail DIN + borniers (Wago 221 / Phoenix) | Répartition N/PE, raccordements. | lot | 10–20 € |
-| Presse-étoupes M16/M20 | Entrées câbles : secteur, 5 moteurs, sonde, contacts. | ~10 | <1 €/u |
-| Câble souple 3G1,5 mm², câble signal blindé 2–4 conducteurs | Liaisons puissance et capteurs. | au besoin | — |
-| Séparateurs / barrières, étiquettes | Séparation physique zones 230 V / TBT, repérage. | lot | 5–10 € |
+| Réf.                                                                                                            | Description                                              | Qté       | ~Prix   |
+| --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------- | ------- |
+| **Coffret IP65** polycarbonate/ABS + platine ou rail DIN, ~300×200×120 mm — type *Fibox*, *Spelsberg*, *Gewiss* | Boîtier mural étanche (environnement poussiéreux/chaud). | 1         | 20–40 € |
+| Rail DIN + borniers (Wago 221 / Phoenix)                                                                        | Répartition N/PE, raccordements.                         | lot       | 10–20 € |
+| Presse-étoupes M16/M20                                                                                          | Entrées câbles : secteur, 5 moteurs, sonde, contacts.    | ~10       | <1 €/u  |
+| Câble souple 3G1,5 mm², câble signal blindé 2–4 conducteurs                                                     | Liaisons puissance et capteurs.                          | au besoin | —       |
+| Séparateurs / barrières, étiquettes                                                                             | Séparation physique zones 230 V / TBT, repérage.         | lot       | 5–10 €  |
 
 **Budget indicatif total : 150–300 €** selon la qualité des SSR.
 
@@ -127,7 +127,7 @@ uniquement** — exactement comme le régulateur MONEX d'origine (la pompe conti
 de tourner en surchauffe pour évacuer la chaleur).
 
 ```
-230 V ─[C6A]─┬─────────────────────────────────────── N ───────────┬─ N moteurs
+230 V ─[C6A]─┬──────────────────────────────────────── N ───────────┬─ N moteurs
              │                                                      │
              │   ZONE COMBUSTION  (derrière le STB)                 │
              ├─[STB 95 °C]─┬─ SSR1 ───── L vis trémie ──────────────┤

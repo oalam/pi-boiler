@@ -261,6 +261,18 @@ void test_sensor_failure_counter_resets_on_good_reading() {
     CHECK(c.state() == State::Running);
 }
 
+void test_engine_fault_locks() {
+    FakeActuators act;
+    FakeReporter rep;
+    BoilerController c(act, rep, BoilerSettings{}, 0);
+    c.handle_command(0, Command::Start);
+    c.on_temperature(1000, 50.0f);  // Running
+    c.on_engine_fault(2000);        // protection thermique / bourrage d'une vis
+    CHECK(c.state() == State::Locked);
+    CHECK(rep.last_alert == Alert::EngineFault);
+    CHECK(!tremie(act) && !bruleur(act) && !ventilo(act));
+}
+
 void test_stop_returns_to_stopped() {
     FakeActuators act;
     FakeReporter rep;
@@ -319,6 +331,7 @@ int main() {
     RUN(test_hydraulics_follow_temperature);
     RUN(test_sensor_failure_alerts_and_falls_back_to_slowing);
     RUN(test_sensor_failure_counter_resets_on_good_reading);
+    RUN(test_engine_fault_locks);
     RUN(test_stop_returns_to_stopped);
     RUN(test_load_pellets_in_stopped);
     RUN(test_settings_are_clamped);

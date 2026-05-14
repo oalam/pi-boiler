@@ -43,6 +43,7 @@ Stopped ──────▶ Igniting ─────────────�
 
 Running / Slowing / Igniting ──(T >= 90 °C)──▶ Overheating ──(T <= 85 °C)──▶ Running/Slowing
 Igniting / Running ──(sonde muette x5)──▶ Slowing  (repli sécurisé)
+tout état actif ──(défaut de vis)──▶ Locked
 ```
 
 États : `Stopped`, `Igniting`, `Running`, `Slowing`, `Overheating`, `Locked`.
@@ -52,7 +53,8 @@ Sécurités intégrées (alignées sur la notice du régulateur MONEX d'origine)
 - **verrouillage température basse** — sous 30 °C après 30 min de marche → `Locked` ;
 - **surchauffe logicielle** — au-delà de 90 °C, combustion coupée, circulation
   forcée, hystérésis de sortie à 85 °C ;
-- **panne de sonde** — après 5 lectures muettes, alerte et repli en ralenti.
+- **panne de sonde** — après 5 lectures muettes, alerte et repli en ralenti ;
+- **défaut de vis** — protection thermique ou bourrage (`on_engine_fault`) → `Locked`.
 
 > ⚠️ La surchauffe logicielle à 90 °C est un **second** niveau de protection.
 > Le thermostat physique 95 °C doit rester une coupure matérielle en série sur

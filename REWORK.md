@@ -104,6 +104,22 @@ scission.
 - Le cœur **absorbe `Boiler` + `EngineCyclesManager`** : un seul objet possède
   états *et* minuteries, ce qui élimine le découpage fragile d'origine.
 
+### Phase 2a — Firmware ESP32 « glue » (écrit, non encore validé)
+
+Écrit dans [`firmware/`](firmware/README.md) : la boucle hôte qui fait tourner le
+cœur sur l'ESP32.
+
+- `Esp32Actuators` / `Esp32Reporter` — implémentations matérielles des deux
+  interfaces du cœur.
+- `main.cpp` — horloge monotone 64 bits, lecture DS18B20, lecture des contacts
+  de sécurité (`on_engine_fault`), watchdog matériel, boucle déterministe.
+- `web_ui` — interface web responsive servie par l'ESP32, accessible au
+  téléphone (`chaudiere.local`).
+- Le cœur a gagné `on_engine_fault()` (verrouillage sur défaut de vis) — entrée
+  qui manquait pour les contacts thermiques / anti-bourrage.
+- **Non encore compilé** (pas de toolchain ESP32 sur la machine de dev) ni
+  validé sur matériel.
+
 ---
 
 ## 4. Décisions de conception à valider
@@ -131,17 +147,21 @@ sont à confirmer avant d'aller plus loin :
 ### Fait
 - [x] Phase 0 — corrections critiques du code Scala
 - [x] Phase 1 — cœur de régulation C++ portable, testé
+- [x] Phase 2a — firmware ESP32 « glue » écrit (`firmware/`), non encore compilé
+      ni validé sur matériel
 
 ### À venir
 
 **Phase 2 — Intégration sur cible** (matériel détaillé dans [`docs/hardware.md`](docs/hardware.md))
-- [ ] Confirmer la cible matérielle (ESP32 ou autre) et le câblage hydraulique
-- [ ] Implémenter `IActuators` (pilotage GPIO/relais) et `IReporter` pour la cible
-- [ ] Boucle hôte : horloge monotone, lecture de la sonde 1-Wire, `tick()` régulier
-- [ ] Armer le watchdog matériel ; état de repli sûr au reset
-- [ ] Étage de puissance propre : opto-isolation, SSR/contacteurs pour les vis,
+- [x] Implémenter `IActuators` / `IReporter` pour l'ESP32 (`Esp32Actuators`, `Esp32Reporter`)
+- [x] Boucle hôte : horloge monotone, lecture DS18B20, `tick()` régulier (`main.cpp`)
+- [x] Armer le watchdog matériel ; organes à l'arrêt au boot
+- [x] Interface téléphone : UI web servie par l'ESP32 (`web_ui`)
+- [ ] Compiler le firmware (`pio run`) et figer les versions des bibliothèques
+- [ ] Confirmer la cible matérielle et le câblage hydraulique
+- [ ] Étage de puissance propre : opto-isolation, SSR pour les vis, carte relais,
       snubbers, fusibles par sortie
-- [ ] Interface téléphone : UI web servie par l'ESP32
+- [ ] Valider sur le matériel réel (polarité des contacts, ordre des sondes)
 
 **Phase 3 — Superviseur**
 - [ ] Réécrire la couche supervision (Python ou Go) : REST, Elasticsearch, alertes

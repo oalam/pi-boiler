@@ -21,6 +21,10 @@ project/plugins/project/
 # C++ controller core
 controller/build/
 
+# Firmware ESP32 (PlatformIO)
+firmware/.pio/
+firmware/include/config.hpp
+
 # Éditeurs / OS
 .DS_Store
 .obsidian/

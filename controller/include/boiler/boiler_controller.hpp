@@ -34,6 +34,11 @@ public:
     // Échec de lecture de la sonde de température.
     void on_sensor_failure(uint64_t now_ms);
 
+    // Défaut sur une vis sans fin : protection thermique déclenchée ou bourrage
+    // (contacts secs `tremieSecu` / `bruleurSecu`). Verrouille la chaudière.
+    // À appeler sur le front du défaut, pas en continu.
+    void on_engine_fault(uint64_t now_ms);
+
     // Commande externe (REST, bouton, superviseur).
     void handle_command(uint64_t now_ms, Command command);
 

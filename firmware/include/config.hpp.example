@@ -1,0 +1,11 @@
+#pragma once
+
+// Copier ce fichier en `config.hpp` et renseigner les valeurs.
+// `config.hpp` est ignoré par git (ne pas versionner d'identifiants).
+//
+// Étape provisoire : à terme, remplacer par un portail captif WiFiManager
+// (configuration sans recompilation) — voir firmware/README.md.
+
+#define WIFI_SSID "mon-reseau-wifi"
+#define WIFI_PASS "mon-mot-de-passe"
+#define HOSTNAME  "chaudiere"   // accessible via http://chaudiere.local
