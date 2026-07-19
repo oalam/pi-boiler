@@ -1,0 +1,14 @@
+# Configuration du chien de garde chaudière — à copier en /etc/boiler-monitor.conf
+# (ce fichier .sample est versionné ; la vraie conf contient le topic secret
+# et l'URL de ping, elle reste hors git.)
+
+# Topic ntfy.sh (secret : quiconque le connaît peut lire/publier les alertes).
+# S'abonner depuis l'appli ntfy sur smartphone.
+NTFY_TOPIC=""
+
+# URL de ping healthchecks.io (créer un check « period 1 min, grace 5 min »
+# puis coller l'URL https://hc-ping.com/<uuid>). Vide = heartbeat désactivé.
+HEALTHCHECKS_URL=""
+
+# Seuil d'alerte surchauffe (°C)
+TEMP_MAX=90

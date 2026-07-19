@@ -1,0 +1,6 @@
+[Unit]
+Description=Chien de garde regulation chaudiere (API, sonde, heartbeat)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/boiler-monitor.sh

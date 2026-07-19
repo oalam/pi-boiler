@@ -33,6 +33,13 @@ The mobile web UI (`ui/index.html`, shared with the phase-2 ESP32) is served at
 `http://192.168.1.12:8080` by `ui/pi_bridge.py`, which implements `/api/status`
 (1-Wire sysfs + `gpio read`) and proxies `/api/command` to the Scala API.
 
+Robustness hardening on the Pi (sources in `deploy/`): `boiler-monitor.timer` runs
+`boiler-monitor.sh` every minute (restarts a mute regulation API, alerts via ntfy.sh
+on API/sensor failure and overheat, heartbeats to healthchecks.io — secrets in
+`/etc/boiler-monitor.conf`, not in git); systemd drives the BCM2835 hardware
+watchdog (`RuntimeWatchdogSec=14`); journald is RAM-only (`Storage=volatile`) to
+spare the SD card.
+
 ## Two entry points
 
 - **`api.Boot`** — production. Starts the full actor system, binds the Spray REST service,
