@@ -22,10 +22,16 @@ sbt test                       # run all tests (scalatest)
 sbt "testOnly org.oalam.regulation.TemperatureSensorTest"   # single test
 ```
 
-Run on the Pi (from the deploy dir, needs root for GPIO):
+Run on the Pi: two systemd units, enabled at boot (jars deployed in `/home/pi/`):
 ```bash
-sudo nohup java -cp regulation_2.11-<v>.jar:regulation-assembly-<v>-deps.jar org.oalam.regulation.api.Boot &
+sudo systemctl status boiler      # regulation (java api.Boot, needs root for GPIO)
+sudo systemctl status boiler-ui   # web UI bridge (python3 ui/pi_bridge.py, port 8080)
 ```
+The Pi (`boiler`, spare Pi 2 since 2026) has static IP 192.168.1.12 set in its
+`/etc/dhcpcd.conf` (+ `net.ifnames=0` in cmdline.txt so the interface stays `eth0`).
+The mobile web UI (`ui/index.html`, shared with the phase-2 ESP32) is served at
+`http://192.168.1.12:8080` by `ui/pi_bridge.py`, which implements `/api/status`
+(1-Wire sysfs + `gpio read`) and proxies `/api/command` to the Scala API.
 
 ## Two entry points
 
