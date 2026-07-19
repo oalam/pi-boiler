@@ -99,60 +99,95 @@ Constantes de réglage : `core/package.scala`. Réglages dynamiques (consigne, `
 
 ## Compilation
 
-> ⚠️ **Java 8 obligatoire.** Le projet utilise **sbt 0.13.8** (cf.
-> `project/build.properties`), qui **ne fonctionne pas sur un JDK ≥ 9** : sur un
-> JDK récent (17, 21…) le build échoue avec `NoClassDefFoundError: sbt/Configuration`.
-> Il faut un **JDK 8**.
->
-> Sur macOS, installer puis cibler explicitement le JDK 8 :
+Le build a été remis en état de marche en juillet 2026 : **sbt 0.13.18** (cf.
+`project/build.properties`), **toutes les dépendances viennent de Maven Central**
+(y compris `pi4j-core 1.2`, qui remplace l'ancien `1.2-SNAPSHOT` disparu des
+dépôts) — plus aucun build local préalable n'est nécessaire.
+
+> ⚠️ **Java 8 obligatoire** : Scala 2.11.7 ne compile pas sur un JDK ≥ 9.
+> Sur un Mac Apple Silicon, le plus simple est un JDK 8 Zulu (Azul publie des
+> builds arm64) :
 > ```bash
-> brew install --cask temurin@8
-> export JAVA_HOME=$(/usr/libexec/java_home -v 1.8)   # à faire avant chaque build
+> brew install --cask zulu@8
+> sbt -java-home "$(/usr/libexec/java_home -v 1.8)" clean package
 > ```
-
-### Ordre de build
-
-**1. Construire `pi4j-core` d'abord.** La dépendance `pi4j-core 1.2-SNAPSHOT`
-n'est pas publiée sur les dépôts publics — il faut la compiler localement et
-l'installer dans le dépôt Maven local, sinon `sbt` échoue à la résolution :
-
-```bash
-# dans le dépôt pi4j, avec le JDK 8 actif
-mvn clean install -P raspberrypi
-```
-
-**2. Construire ce dépôt** (toujours avec le JDK 8 actif) :
+> Le lanceur sbt Homebrew récent peut échouer à reconstituer un vieux sbt 0.13 ;
+> en cas de souci, utiliser le lanceur d'époque
+> ([sbt-0.13.18.tgz](https://github.com/sbt/sbt/releases/tag/v0.13.18)) :
+> `java -jar sbt/bin/sbt-launch.jar clean package`.
 
 ```bash
 sbt clean package              # produit target/scala-2.11/regulation_2.11-1.8.jar
 sbt assemblyPackageDependency  # produit le jar des dépendances
 sbt test                       # lance les tests (scalatest)
+sbt "testOnly org.oalam.regulation.TemperatureSensorTest"   # un seul test
 ```
-
-Pour ne lancer qu'un test :
-
-```bash
-sbt "testOnly org.oalam.regulation.TemperatureSensorTest"
-```
-
-> Ces contraintes (JDK 8, snapshot non publié) sont précisément le « build non
-> reproductible » identifié dans [`docs/critique-evolution.md`](docs/critique-evolution.md) ;
-> leur résolution fait partie du chantier décrit dans [`REWORK.md`](REWORK.md).
 
 ---
 
 ## Déploiement et lancement
 
-Sur le Raspberry Pi (l'accès GPIO nécessite les droits root) :
+Le Pi (`boiler`, un Pi 2 depuis juillet 2026, Raspbian 9 Stretch + Java 8 +
+wiringPi) porte l'**IP statique `192.168.1.12`** — configurée dans son
+`/etc/dhcpcd.conf`, avec `net.ifnames=0` dans `/boot/cmdline.txt` pour que
+l'interface reste `eth0` quel que soit le Pi (le code binde cette IP en dur).
+Accès : `ssh pi@192.168.1.12` (clé).
+
+Les jars vivent dans `/home/pi/`. Deux services systemd, activés au boot :
+
+| Service | Rôle |
+|---------|------|
+| `boiler` | la régulation (`java … api.Boot`, root pour les GPIO, `Restart=always`, attend l'IP avant de démarrer) |
+| `boiler-ui` | l'IHM web mobile (`python3 ui/pi_bridge.py`, port 8080, utilisateur `pi`) |
 
 ```bash
-sudo apt-get install wiringpi   # support GPIO
-
-cd apps/
-sudo nohup java -cp regulation_2.11-1.8.jar:regulation-assembly-1.8-deps.jar \
-    org.oalam.regulation.api.Boot &
-sudo tail -f nohup.out
+sudo systemctl status boiler boiler-ui   # état
+sudo journalctl -u boiler -f             # logs (en RAM, cf. supervision)
 ```
+
+Mise à jour du code : recompiler sur le poste de dev, `scp` les jars vers
+`/home/pi/`, puis `sudo systemctl restart boiler`.
+
+### IHM mobile
+
+`http://192.168.1.12:8080` (depuis le réseau local) : température en direct,
+état, voyants des 5 moteurs, boutons Démarrer / Arrêter / Amorcer / Arrêt
+complet. La page (`ui/index.html`) est **celle de la phase 2 ESP32, inchangée** :
+`ui/pi_bridge.py` implémente son contrat d'API (`/api/status`, `/api/command`)
+au-dessus de l'existant — sonde lue en sysfs, moteurs lus via `gpio read`,
+commandes relayées à l'API Scala. Limites : consommation de granulés à 0 (non
+suivie par la phase 1) et état dérivé du ventilateur (`Running`/`Stopped`).
+
+---
+
+## Supervision et robustesse
+
+Mise en place en juillet 2026 (sources dans [`deploy/`](deploy/), configuration
+secrète — topic ntfy, URL healthchecks — dans `/etc/boiler-monitor.conf` sur le
+Pi, **hors git**) :
+
+- **Chien de garde applicatif** — `boiler-monitor.timer` lance
+  `boiler-monitor.sh` chaque minute : API de régulation muette → redémarrage
+  automatique du service + alerte ; sonde 1-Wire muette → alerte « régulation
+  aveugle » ; eau ≥ 90 °C → alerte urgente. Anti-spam : une alerte par
+  changement d'état (flags dans `/run`, tmpfs).
+- **Alertes push** — [ntfy.sh](https://ntfy.sh), abonnement au topic depuis
+  l'appli smartphone. Remplace de fait les vieux `SmsAgent`/`MailAgent` morts.
+- **Heartbeat externe** — ping [healthchecks.io](https://healthchecks.io) chaque
+  minute (grâce 5 min) : alerte quand le Pi *ne peut plus* parler (Pi mort, CPL
+  débranché, box HS) — le seul cas qu'aucune supervision embarquée ne couvre.
+- **Watchdog matériel** — le watchdog du BCM2835 est armé par systemd
+  (`RuntimeWatchdogSec=14`) : OS gelé → reboot automatique, la pile complète
+  revient seule (testé).
+- **Journaux en RAM** — `journald` en `Storage=volatile` : zéro écriture SD en
+  régime normal (les logs ne survivent pas au reboot, les événements importants
+  partent en notification).
+
+**Reste à faire côté matériel** : carte microSD neuve « high endurance » + image
+de sauvegarde (la carte de 2018 a déjà corrompu une écriture), puis racine en
+lecture seule ; remplacer les relais mécaniques des deux vis — déjà morts deux
+fois, ~3 700 commutations/jour en chauffe — par des SSR zéro-cross (cf. panier
+Conrad de la phase 2 : Crouzet 84132210N + varistance + condensateur X2).
 
 ---
 
@@ -203,8 +238,10 @@ sur micro-contrôleur.
   comme le faisait le MONEX). La panne de sonde est signalée mais ne met pas la chaudière
   en sécurité automatiquement.
 - **Protection surchauffe purement logicielle** (90 °C) — voir l'avertissement de sécurité
-  plus haut.
+  plus haut. La supervision (`deploy/`) ajoute une deuxième couche logicielle d'alerte,
+  mais ne remplace pas non plus un thermostat matériel.
 - **Secrets en clair** — `util/SmsAgent.scala` contient un identifiant API SMS dans le code,
-  `util/MailAgent.scala` a des identifiants Gmail en placeholder (`"***"`). À externaliser /
-  révoquer.
+  `util/MailAgent.scala` a des identifiants Gmail en placeholder (`"***"`). Ces deux canaux
+  sont morts (remplacés en pratique par ntfy) mais les identifiants restent à révoquer et le
+  code à retirer.
 - **Aucun test sur la logique de régulation** — seul `TemperatureSensor` est couvert.
