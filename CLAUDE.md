@@ -10,7 +10,8 @@ probe, drives the boiler's motors via GPIO relays, exposes a small REST API for 
 control, and logs events to Elasticsearch with SMS/email alerting. Code comments and
 domain terms are in French.
 
-Scala 2.11.7, sbt 0.13.8, Akka actors, Spray HTTP, pi4j for GPIO.
+Scala 2.11.7, sbt 0.13.18, Akka actors, Spray HTTP, pi4j 1.2 for GPIO. Building requires a
+JDK 8 (Scala 2.11 does not compile on recent JDKs); all dependencies resolve from Maven Central.
 
 ## Commands
 

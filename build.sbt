@@ -6,7 +6,7 @@ scalaVersion := "2.11.7"
 
 libraryDependencies ++= Seq(
     "log4j" % "log4j" % "1.2.17",
-    "com.pi4j" % "pi4j-core" % "1.2-SNAPSHOT",
+    "com.pi4j" % "pi4j-core" % "1.2",
     "com.typesafe.akka" % "akka-actor_2.11" % "2.4.1",
     "com.typesafe.akka" % "akka-slf4j_2.11" % "2.4.1",
     "com.typesafe.akka" % "akka-cluster_2.11" % "2.4.1",
@@ -20,6 +20,3 @@ libraryDependencies ++= Seq(
     "javax.mail" % "mail" % "1.4.7"
 )
 
-resolvers += "spray repo" at "http://repo.spray.io"
-
-resolvers += "oss sonatyp" at "https://oss.sonatype.org/content/groups/public"
