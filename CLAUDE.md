@@ -68,7 +68,9 @@ Control flow:
    command/stop/jam.
 4. **`GPIOEngineDriver`** is the only actor touching hardware. It provisions pi4j output
    pins for the 5 motors and input pins for the two jam sensors. **Pins are active-low**:
-   `.low()` starts an engine, `.high()` stops it. Jam sensors (`tremieSecu`, `bruleurSecu`)
+   `.low()` starts an engine, `.high()` stops it. The wiringPi pin numbers in `GPIOEngineDriver` and in
+   `ENGINE_PINS` of `ui/pi_bridge.py` must stay identical (see the table in README.md);
+   `Vanne4V` and `Laddomat` were swapped in Oct. 2026 to match the rewired boiler. Jam sensors (`tremieSecu`, `bruleurSecu`)
    push `BourrageTremie`/`BourrageBruleur` back into the system.
 5. **`ReportHandler`** subscribes to all notable events: indexes them into Elasticsearch
    via `ElasticsearchAgent`, and on over/under-temperature fires `SmsAgent` + `MailAgent`.

@@ -66,8 +66,12 @@ class GPIOEngineDriver extends Actor  {
     private val bruleur = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_00, "bruleur", PinState.HIGH)
     private val tremie = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_02, "tremie", PinState.HIGH)
     private val ventilo = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_03, "ventilo", PinState.HIGH)
-    private val vanne4V = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_01, "vanne4V", PinState.HIGH)
-    private val laddomat = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_04, "laddomat", PinState.HIGH)
+    // Depuis le rebranchement d'octobre 2026, les deux pompes sont permutees sur les sorties
+    // relais : le circulateur (vanne4V) est sur wPi 4 (BCM 23, broche 16) et le laddomat
+    // sur wPi 1 (BCM 18, broche 12). Le mapping doit rester identique a ENGINE_PINS dans
+    // ui/pi_bridge.py.
+    private val vanne4V = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_04, "vanne4V", PinState.HIGH)
+    private val laddomat = gpio.provisionDigitalOutputPin(RaspiPin.GPIO_01, "laddomat", PinState.HIGH)
     private val tremieSecu = gpio.provisionDigitalInputPin(RaspiPin.GPIO_05, "tremieSecu", PinPullResistance.PULL_UP)
     private val bruleurSecu = gpio.provisionDigitalInputPin(RaspiPin.GPIO_06, "bruleurSecu", PinPullResistance.PULL_UP)
 

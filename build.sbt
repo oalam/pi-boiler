@@ -1,6 +1,6 @@
 name := "regulation"
 
-version := "1.8"
+version := "1.8.1"
 
 scalaVersion := "2.11.7"
 

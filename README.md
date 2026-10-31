@@ -60,6 +60,22 @@ RestServiceActor  ──▶  API REST de commande manuelle
   suivant.
 - **`GPIOEngineDriver`** — seul acteur en contact avec le matériel. **Broches actives au
   niveau bas** : `.low()` démarre un moteur, `.high()` l'arrête.
+
+  Affectation des broches (numérotation wiringPi, reprise à l'identique dans
+  `ENGINE_PINS` de `ui/pi_bridge.py`) :
+
+  | Organe | wPi | BCM | Broche physique |
+  |--------|-----|-----|-----------------|
+  | Brûleur (`Bruleur`) | 0 | 17 | 11 |
+  | Trémie (`Tremie`) | 2 | 27 | 13 |
+  | Ventilateur (`Ventilo`) | 3 | 22 | 15 |
+  | Circulateur (`Vanne4V`) | 4 | 23 | 16 |
+  | Laddomat (`Laddomat`) | 1 | 18 | 12 |
+  | Sécurité trémie (entrée) | 5 | 24 | 18 |
+  | Sécurité brûleur (entrée) | 6 | 25 | 22 |
+
+  Circulateur et laddomat ont été permutés en octobre 2026 (v1.8.1) pour suivre le
+  câblage constaté après le déménagement de la chaudière.
 - **`ReportHandler`** — journalise dans Elasticsearch, envoie les alertes SMS / e-mail.
 - **`RestServiceActor`** — expose `GET /api/v0.1/action?type=...`.
 
@@ -117,7 +133,7 @@ dépôts) — plus aucun build local préalable n'est nécessaire.
 > `java -jar sbt/bin/sbt-launch.jar clean package`.
 
 ```bash
-sbt clean package              # produit target/scala-2.11/regulation_2.11-1.8.jar
+sbt clean package              # produit target/scala-2.11/regulation_2.11-1.8.1.jar
 sbt assemblyPackageDependency  # produit le jar des dépendances
 sbt test                       # lance les tests (scalatest)
 sbt "testOnly org.oalam.regulation.TemperatureSensorTest"   # un seul test

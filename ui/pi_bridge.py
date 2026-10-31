@@ -34,7 +34,7 @@ W1_SLAVE = "/sys/bus/w1/devices/28-021581cc38ff/w1_slave"
 # (libellé IHM, numéro wiringPi) dans l'ordre attendu par index.html :
 # e0 trémie, e1 brûleur, e2 ventilo, e3 circul. (vanne 4V), e4 laddomat
 ENGINE_PINS = [("tremie", 2), ("bruleur", 0), ("ventilo", 3),
-               ("vanne4V", 1), ("laddomat", 4)]
+               ("vanne4V", 4), ("laddomat", 1)]  # permutés depuis oct. 2026 (cf. EngineDriver)
 
 ALLOWED_COMMANDS = ("load", "start", "stop", "shutdown")
 
