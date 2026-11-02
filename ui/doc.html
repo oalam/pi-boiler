@@ -52,6 +52,7 @@
     <a href="#reglages">9. Réglages</a>
     <a href="#supervision">10. Supervision du Pi</a>
     <a href="#attention">11. Points d'attention</a>
+    <a href="#journal">12. Journalisation vers Powerview2</a>
   </div>
 
   <h2 id="organes">1. Organes et mesure</h2>
@@ -177,6 +178,37 @@
       <li><b>Réglages volatils.</b> Consigne, <code>delayOff</code> et <code>restDuration</code> reviennent aux défauts à chaque redémarrage.</li>
     </ul>
   </div>
+
+  <h2 id="journal">12. Journalisation vers Powerview2</h2>
+  <p>Un service séparé observe la sonde et les relais chaque seconde et envoie toutes les 5 minutes, par SFTP, des mesures à la minute et les événements vers Powerview2 (campagne « chaudiere », appareil « pi-boiler »). Il ne commande rien.</p>
+  <table>
+    <tr><th>Voie</th><th>Contenu</th></tr>
+    <tr><td><code>boiler_temp</code> (C)</td><td>Température moyenne de l'eau sur la minute.</td></tr>
+    <tr><td><code>boiler_tremie</code>, <code>_bruleur</code>, <code>_ventilo</code>, <code>_circulateur</code>, <code>_laddomat</code> (s)</td><td>Secondes de marche de chaque organe dans la minute.</td></tr>
+    <tr><td><code>boiler_pellets</code> (g)</td><td>Granulés estimés : secondes de trémie × débit de la vis (8,7 g/s par défaut, à calibrer).</td></tr>
+    <tr><td><code>boiler_power</code> (W), <code>boiler_energy</code> (Wh)</td><td>Puissance et énergie thermiques utiles estimées : granulés × 5 kWh/kg × rendement 85 % (CEDRA ECO 24).</td></tr>
+    <tr><td><code>boiler_pellets_total</code> (kg), <code>boiler_energy_total</code> (Wh)</td><td>Cumuls depuis la mise en service du journal.</td></tr>
+    <tr><td><code>boiler_state</code>, <code>boiler_event</code> (code)</td><td>1 = combustion en cours ; code du dernier événement de la minute.</td></tr>
+  </table>
+  <p>Ordre de grandeur avec les réglages par défaut : 3 s de trémie par cycle de 23 s donnent 26,1 g par cycle, 4,1 kg/h, 20,4 kW au pouvoir calorifique et 17,4 kW utiles. Ce sont des estimations : le débit réel de la vis et le rendement varient.</p>
+  <h3>Codes d'événement</h3>
+  <table>
+    <tr><th>Code</th><th>Événement</th></tr>
+    <tr><td>1</td><td>Démarrage du journal</td></tr>
+    <tr><td>2 / 3</td><td>Cycles de combustion démarrés / arrêtés (ventilateur, confirmé après 5 s)</td></tr>
+    <tr><td>4</td><td>Amorçage (vis en marche sans ventilateur au moins 10 s)</td></tr>
+    <tr><td>5 / 6</td><td>Circulateur en marche / à l'arrêt</td></tr>
+    <tr><td>7 / 8</td><td>Laddomat en marche / à l'arrêt</td></tr>
+    <tr><td>10</td><td>Passage sous 30 °C (verrouillage)</td></tr>
+    <tr><td>11 / 12</td><td>Passage au-dessus / en dessous de 40 °C</td></tr>
+    <tr><td>13</td><td>Passage au-dessus de 60 °C</td></tr>
+    <tr><td>14 / 15</td><td>Consigne atteinte / retour sous consigne − 3 °C</td></tr>
+    <tr><td>16</td><td>Surchauffe au-delà de 90 °C (plage, avec le maximum atteint)</td></tr>
+    <tr><td>20 / 21</td><td>Bourrage vis trémie / vis brûleur</td></tr>
+    <tr><td>30 / 31</td><td>Sonde muette (5 lectures) / rétablie</td></tr>
+    <tr><td>40</td><td>Lecture des relais en échec</td></tr>
+  </table>
+  <div class="note">Le journal déduit l'état de la chaudière des relais. Il ne connaît pas l'état interne de la régulation : la relance de 2 min en ralenti apparaît comme un court cycle de combustion.</div>
 
   <a class="back" href="/">← Retour à la commande</a>
   <div class="foot">Source : code de la régulation (acteurs Boiler, EngineCyclesManager, TemperatureEventHandler, GPIOEngineDriver, ReportHandler) et script boiler-monitor.sh.</div>

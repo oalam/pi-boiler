@@ -1,0 +1,17 @@
+[Unit]
+Description=Journalisation chaudiere vers Powerview2 (CSV + SFTP)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/ui
+ExecStart=/usr/bin/python3 /home/pi/ui/boiler_logger.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

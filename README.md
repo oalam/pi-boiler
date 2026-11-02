@@ -215,6 +215,66 @@ Conrad de la phase 2 : Crouzet 84132210N + varistance + condensateur X2).
 
 ---
 
+## Journalisation vers Powerview2
+
+`ui/boiler_logger.py` (service `boiler-logger`, utilisateur `pi`) observe chaque
+seconde la sonde et les 7 GPIO (5 organes, 2 contacts de bourrage), agrège par
+minute, détecte les événements par transition et dépose des CSV par SFTP sur le
+VPS Powerview2 toutes les 5 min, au format canonique `PV2_CSV_V001` /
+`PV2_EVENTS_V001` (powerview2 v1.4.33). Chemin de dépôt
+`<home SFTP>/chaudiere/pi-boiler/` : `chaudiere` devient la campagne et
+`pi-boiler` l'appareil dans Powerview2. Il ne dépend pas de la régulation Scala
+(qui n'est pas modifiée) et ne touche pas aux GPIO en écriture.
+
+Voies produites (une valeur par minute, préfixe `boiler_`) :
+
+| Voie | Unité | Contenu |
+|------|-------|---------|
+| `temp` | C | température moyenne de l'eau sur la minute |
+| `tremie`, `bruleur`, `ventilo`, `circulateur`, `laddomat` | s | secondes de marche dans la minute |
+| `pellets` | g | granulés estimés = secondes trémie × `FEED_RATE_G_PER_S` |
+| `power` | W | puissance thermique utile moyenne sur la minute |
+| `energy` | Wh | énergie thermique utile de la minute |
+| `pellets_total` (kg), `energy_total` (Wh) | | cumuls depuis la mise en service (index) |
+| `state` | code | 1 = combustion (ventilateur en marche au moins 30 s), 0 sinon |
+| `event` | code | code du dernier événement de la minute, 0 sinon |
+
+Modèle énergétique (notice MONEX, CEDRA ECO 24 : PCI ≈ 5 kWh/kg, rendement
+85 %) : `energy_Wh = pellets_g × PCI_KWH_PER_KG × EFFICIENCY`, `power_W =
+energy_Wh × 60`. Avec les réglages par défaut (3 s de trémie par cycle de 23 s,
+débit 8,7 g/s) : 26,1 g par cycle, 156,5 cycles/h, 4,1 kg/h, soit 20,4 kW PCI et
+17,4 kW utiles, dans la plage 7 à 24 kW de la notice. **Le débit de la vis est à
+calibrer** : lancer Amorcer (50 s de trémie), peser les granulés livrés, diviser
+par 50, reporter dans `FEED_RATE_G_PER_S`.
+
+Événements (fichier `*_events.csv`, catégorie `chaudiere`, annotations globales
+dans Powerview2) : démarrage du logger (1), cycles de combustion démarrés /
+arrêtés (2 / 3, ventilateur débouncé 5 s), amorçage (4), circulateur et
+laddomat en marche / à l'arrêt (5 à 8), passages sous 30 °C (10), 40 °C en
+montée / descente (11 / 12), 60 °C (13), consigne atteinte / reprise à
+consigne − 3 (14 / 15), surchauffe 90 °C en plage avec le maximum (16),
+bourrages trémie / brûleur (20 / 21), sonde muette / rétablie (30 / 31), GPIO
+illisibles (40). La liste fait foi dans `EVENTS` de `ui/boiler_logger.py`.
+
+Installation sur le Pi (sources dans `deploy/` et `ui/`) :
+
+```bash
+scp ui/boiler_logger.py pi@192.168.1.12:/home/pi/ui/
+scp deploy/boiler-logger.service pi@192.168.1.12:/tmp/
+sudo install -m 644 /tmp/boiler-logger.service /etc/systemd/system/
+sudo install -m 640 -o root -g pi deploy/boiler-logger.conf.sample /etc/boiler-logger.conf   # puis éditer
+sudo sh -c 'umask 077; printf "machine 217.160.116.85 login <user> password <mdp>\n" > /etc/boiler-logger.netrc; chown pi /etc/boiler-logger.netrc'
+sudo mkdir -p /var/lib/boiler-logger && sudo chown pi /var/lib/boiler-logger
+sudo systemctl daemon-reload && sudo systemctl enable --now boiler-logger
+sudo journalctl -u boiler-logger -f
+```
+
+Le dépôt utilise `curl` (support SFTP de libssh2, présent sur Raspbian). Les
+fichiers non déposés (VPS injoignable) attendent dans
+`/var/lib/boiler-logger/outbox/` et partent au tour suivant ; un fichier rejoué
+n'écrase que les mêmes horodatages côté Influx et ne crée pas de doublon
+d'annotation. Tests sans matériel : `python3 -m pytest tests/ui`.
+
 ## Configuration
 
 - **Service REST** — hôte et port sont **codés en dur** dans `api/Boot.scala`
