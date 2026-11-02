@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chaudière — fonctionnement</title>
+<style>
+  :root { color-scheme: dark; }
+  body { font-family: system-ui, sans-serif; margin: 0; background: #1b1d22; color: #e6e6e6; line-height: 1.5; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 4px; }
+  .sub { font-size: .85rem; opacity: .6; margin-bottom: 16px; }
+  h2 { font-size: 1.05rem; font-weight: 600; margin: 28px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #2a2d34; }
+  h3 { font-size: .95rem; font-weight: 600; margin: 16px 0 6px; opacity: .9; }
+  p, li { font-size: .92rem; }
+  ul { padding-left: 20px; margin: 6px 0; }
+  li { margin: 3px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; margin: 8px 0; }
+  th, td { text-align: left; padding: 6px 6px; border-bottom: 1px solid #2a2d34; vertical-align: top; }
+  th { opacity: .6; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: .85em; background: #2a2d34; padding: 1px 5px; border-radius: 4px; }
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 5px; font-size: .75rem; font-weight: 600; background: #2a2d34; }
+  .tag.on { background: #1f5132; }
+  .tag.warn { background: #4a3f15; }
+  .tag.alert { background: #5a1f1f; }
+  .note { background: #2a2d34; border-left: 3px solid #3a8c6e; padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 10px 0; font-size: .88rem; }
+  .note.warn { border-left-color: #a5533a; }
+  .timeline { list-style: none; padding: 0; margin: 8px 0; }
+  .timeline li { display: grid; grid-template-columns: 72px 1fr; gap: 10px; padding: 4px 0; border-bottom: 1px dashed #2a2d34; }
+  .timeline b { font-family: ui-monospace, Menlo, monospace; font-weight: 600; opacity: .8; }
+  .toc { background: #22252b; border-radius: 8px; padding: 10px 14px; }
+  .toc a { display: block; color: #8fd3b8; text-decoration: none; font-size: .9rem; padding: 2px 0; }
+  a.back { display: inline-block; margin: 20px 0 10px; color: #8fd3b8; text-decoration: none; font-size: .9rem; }
+  .foot { font-size: .78rem; opacity: .5; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">← Retour à la commande</a>
+  <h1>Fonctionnement de la régulation</h1>
+  <div class="sub">Règles métier appliquées par le logiciel du Raspberry Pi (régulation v1.8.1). Les valeurs citées sont celles du code.</div>
+
+  <div class="toc">
+    <a href="#organes">1. Organes et mesure</a>
+    <a href="#commandes">2. Boutons de l'interface</a>
+    <a href="#combustion">3. Cycle de combustion</a>
+    <a href="#seuils">4. Seuils de température</a>
+    <a href="#ralenti">5. Mode ralenti (consigne atteinte)</a>
+    <a href="#surchauffe">6. Surchauffe</a>
+    <a href="#verrouillage">7. Verrouillage basse température</a>
+    <a href="#securites">8. Bourrages et panne de sonde</a>
+    <a href="#reglages">9. Réglages</a>
+    <a href="#supervision">10. Supervision du Pi</a>
+    <a href="#attention">11. Points d'attention</a>
+  </div>
+
+  <h2 id="organes">1. Organes et mesure</h2>
+  <p>La régulation pilote cinq organes par relais et lit une seule grandeur : la température de l'eau en sortie de chaudière (sonde 1-Wire DS18B20 dans le doigt de gant), lue <b>toutes les 2 secondes</b>.</p>
+  <table>
+    <tr><th>Voyant</th><th>Organe</th><th>Rôle</th></tr>
+    <tr><td>trémie</td><td>Vis sans fin de la trémie</td><td>Amène les granulés de la réserve vers le flexible.</td></tr>
+    <tr><td>brûleur</td><td>Vis sans fin du brûleur</td><td>Pousse les granulés du flexible dans le foyer.</td></tr>
+    <tr><td>ventilo</td><td>Ventilateur de combustion</td><td>Apporte l'air au foyer.</td></tr>
+    <tr><td>circul.</td><td>Circulateur de chauffage</td><td>Fait circuler l'eau vers les radiateurs. Protège aussi la chaudière de la condensation.</td></tr>
+    <tr><td>laddomat</td><td>Pompe de charge Laddomat</td><td>Charge le ballon tampon une fois l'eau assez chaude.</td></tr>
+  </table>
+  <p>Deux contacts de sécurité (protections thermiques des deux vis) sont surveillés en permanence, voir <a href="#securites">section 8</a>.</p>
+  <div class="note">Tous les événements de température sont des <b>franchissements</b> : une règle se déclenche quand la mesure passe d'un côté à l'autre d'un seuil entre deux lectures, pas tant que la mesure reste au-dessus ou en dessous.</div>
+
+  <h2 id="commandes">2. Boutons de l'interface</h2>
+  <table>
+    <tr><th>Bouton</th><th>Effet exact</th></tr>
+    <tr><td><b>Démarrer</b></td><td>Met le circulateur en marche immédiatement, puis lance les cycles de combustion (<a href="#combustion">section 3</a>). C'est le seul moyen de lancer la chauffe : rien ne démarre tout seul au boot du Pi.</td></tr>
+    <tr><td><b>Arrêter</b></td><td>Interrompt les cycles de combustion : les deux vis et le ventilateur s'arrêtent. <b>Les pompes ne sont pas touchées</b> : circulateur et laddomat restent dans leur état, pilotés par les seuils de température.</td></tr>
+    <tr><td><b>Amorcer</b></td><td>Remplit le brûleur pour l'allumage : vis trémie et vis brûleur tournent <b>50 s</b> sans ventilateur, la vis brûleur continue <b>5 s</b> de plus. Aucun cycle ne suit : il faut ensuite appuyer sur Démarrer.</td></tr>
+    <tr><td><b>Arrêt complet</b></td><td>Coupe les cinq organes et arrête le programme. Le service système le relance automatiquement environ 10 s plus tard, à l'état « Stopped », tous moteurs à l'arrêt.</td></tr>
+  </table>
+  <p>L'état affiché (<span class="tag on">Running</span> / <span class="tag">Stopped</span>) est déduit du ventilateur : ventilateur en marche = cycles de combustion en cours. La consommation de granulés n'est pas suivie par cette version et reste à 0.</p>
+
+  <h2 id="combustion">3. Cycle de combustion</h2>
+  <p>Un cycle alimente le foyer par petites doses, puis attend. Avec les réglages par défaut :</p>
+  <ul class="timeline">
+    <li><b>t = 0</b><span>Vis trémie, vis brûleur et ventilateur démarrent ensemble.</span></li>
+    <li><b>t + 3 s</b><span>La vis trémie s'arrête (durée d'alimentation, fixe).</span></li>
+    <li><b>t + 8 s</b><span>La vis brûleur s'arrête (post-fonctionnement de 5 s, fixe : vide le flexible pour éviter une remontée de feu).</span></li>
+    <li><b>t + 23 s</b><span>Nouveau cycle : 3 s d'alimentation + <code>delayOff</code> (20 s par défaut, réglable).</span></li>
+  </ul>
+  <p>Le <b>ventilateur reste en marche en continu</b> pendant toute la phase de combustion ; il ne s'arrête qu'avec Arrêter, le passage en ralenti, une surchauffe, un verrouillage ou un bourrage.</p>
+  <p>La puissance de chauffe se règle donc par <code>delayOff</code> : plus le temps d'arrêt entre deux doses est long, moins la chaudière chauffe.</p>
+
+  <h2 id="seuils">4. Seuils de température</h2>
+  <table>
+    <tr><th>Seuil</th><th>Sens</th><th>Action</th></tr>
+    <tr><td>30 °C</td><td>descente</td><td><span class="tag alert">Verrouillage</span> arrêt des cycles et du laddomat, alerte SMS + e-mail (<a href="#verrouillage">section 7</a>).</td></tr>
+    <tr><td>40 °C</td><td>montée</td><td><span class="tag on">Circulateur ON</span> (anti-condensation).</td></tr>
+    <tr><td>40 °C</td><td>descente</td><td><span class="tag">Circulateur OFF</span></td></tr>
+    <tr><td>60 °C</td><td>montée</td><td><span class="tag on">Laddomat ON</span>. Il n'y a pas d'arrêt du laddomat à la redescente sous 60 °C.</td></tr>
+    <tr><td>Consigne (75 °C par défaut)</td><td>montée</td><td><span class="tag warn">Ralenti</span> (<a href="#ralenti">section 5</a>).</td></tr>
+    <tr><td>Consigne − 3 °C</td><td>descente</td><td>Reprise des cycles de combustion, si la consigne avait été atteinte avant.</td></tr>
+    <tr><td>90 °C</td><td>montée</td><td><span class="tag alert">Surchauffe</span> (<a href="#surchauffe">section 6</a>).</td></tr>
+  </table>
+  <div class="note">Le laddomat ne s'arrête qu'au verrouillage sous 30 °C ou à l'Arrêt complet. Le circulateur, lui, suit l'hystérésis 40 °C dans les deux sens, mais il est aussi lancé d'office par Démarrer, quelle que soit la température.</div>
+
+  <h2 id="ralenti">5. Mode ralenti (consigne atteinte)</h2>
+  <p>Quand l'eau atteint la consigne, les cycles de combustion s'arrêtent et la chaudière entretient seulement le feu :</p>
+  <ul>
+    <li>Relance immédiate des deux vis et du ventilateur pendant <b>2 min</b> (vis trémie) ; la vis brûleur et le ventilateur continuent <b>5 s</b> de plus (le ventilateur couvre toute l'alimentation pour ne pas étouffer le feu).</li>
+    <li>Cette relance se répète toutes les <code>restDuration</code> (<b>60 min</b> par défaut, réglable).</li>
+    <li>Entre deux relances, tous les moteurs de combustion sont à l'arrêt. Les pompes suivent leurs seuils.</li>
+  </ul>
+  <p><b>Sortie du ralenti</b> : quand l'eau redescend à <b>consigne − 3 °C</b> (72 °C par défaut), les cycles de combustion normaux reprennent.</p>
+  <p>Si la consigne est atteinte alors que l'eau est déjà à 90 °C ou plus, c'est la procédure de surchauffe qui s'applique à la place du ralenti.</p>
+
+  <h2 id="surchauffe">6. Surchauffe</h2>
+  <p>Au franchissement de <b>90 °C</b> en montée :</p>
+  <ul>
+    <li>Arrêt des cycles : vis et ventilateur coupés.</li>
+    <li>Circulateur et laddomat <b>mis en marche</b> pour évacuer la chaleur.</li>
+    <li>Alerte <b>SMS + e-mail</b> « TemperatureTooHigh » et journalisation.</li>
+  </ul>
+  <p>Il n'y a pas d'arrêt de sécurité verrouillé : quand l'eau redescend à consigne − 3 °C, les cycles de combustion reprennent automatiquement. Le script de supervision du Pi envoie en plus une notification ntfy urgente tant que la mesure reste à 90 °C ou plus (<a href="#supervision">section 10</a>).</p>
+
+  <h2 id="verrouillage">7. Verrouillage basse température</h2>
+  <p>Si l'eau <b>redescend sous 30 °C</b> après avoir été au-dessus (feu éteint, réserve vide) :</p>
+  <ul>
+    <li>Arrêt des cycles de combustion et du laddomat.</li>
+    <li>Alerte <b>SMS + e-mail</b> « TemperatureTooLow » et journalisation.</li>
+    <li>Le circulateur n'est pas coupé par cette règle ; il l'est par le passage sous 40 °C, survenu avant.</li>
+  </ul>
+  <p>La chaudière ne redémarre pas seule : il faut vérifier la réserve, au besoin Amorcer, puis Démarrer.</p>
+  <div class="note">Au démarrage de la régulation à froid, la première lecture ne déclenche pas de verrouillage : il faut avoir été au-dessus de 30 °C puis redescendre.</div>
+
+  <h2 id="securites">8. Bourrages et panne de sonde</h2>
+  <h3>Bourrage d'une vis</h3>
+  <p>Chaque vis a une protection thermique câblée sur une entrée du Pi. Quand elle se déclenche :</p>
+  <ul>
+    <li>Le cycle en cours est annulé : les deux vis et le ventilateur s'arrêtent.</li>
+    <li>L'événement « BourrageTremie » ou « BourrageBruleur » est journalisé. <b>Pas de SMS ni d'e-mail</b> pour ce cas.</li>
+    <li>Aucune reprise automatique : débourrer puis Démarrer.</li>
+  </ul>
+  <h3>Sonde de température muette</h3>
+  <ul>
+    <li>Après <b>5 lectures consécutives</b> en échec (environ 10 s), alerte <b>SMS + e-mail</b> « sonde de temperature muette » et journalisation.</li>
+    <li>La régulation <b>continue</b> les cycles en cours sans mesure : aucune règle de température ne peut plus se déclencher (ni ralenti, ni surchauffe, ni verrouillage). Intervenir rapidement.</li>
+    <li>Le script de supervision envoie aussi une notification ntfy quand la sonde ne répond plus.</li>
+  </ul>
+
+  <h2 id="reglages">9. Réglages</h2>
+  <p>Trois réglages sont modifiables à chaud, sans redémarrage, par l'API de la régulation. Ils ne sont pas exposés dans cette interface et <b>reviennent aux valeurs par défaut à chaque redémarrage</b> du programme.</p>
+  <table>
+    <tr><th>Paramètre</th><th>Unité</th><th>Défaut</th><th>Effet</th></tr>
+    <tr><td><code>temperature</code></td><td>°C (entier)</td><td>75</td><td>Consigne : passage en ralenti à cette valeur, reprise à consigne − 3.</td></tr>
+    <tr><td><code>delayOff</code></td><td>secondes</td><td>20</td><td>Temps d'arrêt entre deux doses en combustion (puissance).</td></tr>
+    <tr><td><code>restDuration</code></td><td>minutes</td><td>60</td><td>Intervalle entre deux relances en ralenti.</td></tr>
+  </table>
+  <p>Exemple, depuis le réseau local :</p>
+  <p><code>http://192.168.1.12:9000/api/v0.1/action?type=set&amp;temperature=70&amp;delayOff=25&amp;restDuration=45</code></p>
+  <p>Les paramètres omis gardent leur dernière valeur réglée. Durées fixes, non réglables : alimentation 3 s, post-fonctionnement brûleur 5 s, relance en ralenti 2 min, amorçage 50 s.</p>
+
+  <h2 id="supervision">10. Supervision du Pi</h2>
+  <p>Indépendamment de la régulation, un script tourne <b>toutes les minutes</b> sur le Pi :</p>
+  <ul>
+    <li><b>API de régulation muette</b> : redémarrage automatique du service de régulation et notification ntfy. Après ce redémarrage la chaudière est à l'état Stopped : il faut appuyer sur Démarrer.</li>
+    <li><b>Sonde muette</b> (fichier 1-Wire illisible) : notification ntfy.</li>
+    <li><b>Eau à 90 °C ou plus</b> : notification ntfy urgente.</li>
+    <li><b>Battement de cœur</b> vers healthchecks.io : si le Pi ne donne plus signe de vie, l'alerte vient de l'extérieur.</li>
+  </ul>
+  <p>Le watchdog matériel du Pi redémarre la carte si le système se fige. À chaque redémarrage de la régulation, tous les moteurs sont mis à l'arrêt.</p>
+
+  <h2 id="attention">11. Points d'attention</h2>
+  <div class="note warn">
+    <ul>
+      <li><b>Redémarrage à chaud.</b> Après un redémarrage du programme, la température précédente vaut 0. Si l'eau est déjà chaude, la première lecture compte comme un franchissement de 40 et 60 °C : circulateur et laddomat partent aussitôt. Si elle est au-dessus de la consigne, une relance de ralenti de 2 min est lancée même sans Démarrer.</li>
+      <li><b>Arrêter ne coupe pas les pompes.</b> Pour tout couper, utiliser Arrêt complet.</li>
+      <li><b>Laddomat sans hystérésis.</b> Une fois lancé à 60 °C, il tourne jusqu'au verrouillage sous 30 °C ou à l'Arrêt complet.</li>
+      <li><b>Pilotage en boucle ouverte.</b> Le logiciel suppose qu'un moteur commandé tourne ; seules les protections thermiques des vis remontent une information.</li>
+      <li><b>Réglages volatils.</b> Consigne, <code>delayOff</code> et <code>restDuration</code> reviennent aux défauts à chaque redémarrage.</li>
+    </ul>
+  </div>
+
+  <a class="back" href="/">← Retour à la commande</a>
+  <div class="foot">Source : code de la régulation (acteurs Boiler, EngineCyclesManager, TemperatureEventHandler, GPIOEngineDriver, ReportHandler) et script boiler-monitor.sh.</div>
+</div>
+</body>
+</html>

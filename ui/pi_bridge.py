@@ -91,6 +91,9 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path in ("/", "/index.html"):
             body = (UI_DIR / "index.html").read_bytes()
             self._send(200, body, "text/html; charset=utf-8")
+        elif parsed.path in ("/doc", "/doc.html"):
+            body = (UI_DIR / "doc.html").read_bytes()
+            self._send(200, body, "text/html; charset=utf-8")
         elif parsed.path == "/api/status":
             temp = read_temperature()
             engines = read_engines()

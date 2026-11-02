@@ -174,6 +174,14 @@ au-dessus de l'existant — sonde lue en sysfs, moteurs lus via `gpio read`,
 commandes relayées à l'API Scala. Limites : consommation de granulés à 0 (non
 suivie par la phase 1) et état dérivé du ventilateur (`Running`/`Stopped`).
 
+Une page **Fonctionnement et règles de régulation** (`ui/doc.html`, servie sur
+`http://192.168.1.12:8080/doc.html`, lien en bas de l'IHM) documente pour
+l'utilisateur toutes les règles métier telles que le code les applique : boutons,
+cycle de combustion, seuils, ralenti, surchauffe, verrouillage, bourrages, panne
+de sonde, réglages, supervision et points d'attention. À tenir synchrone avec
+`core/package.scala` et `Boiler.scala` à chaque changement de règle. Le firmware
+ESP32 embarque sa propre copie de l'IHM et ne sert pas cette page.
+
 ---
 
 ## Supervision et robustesse

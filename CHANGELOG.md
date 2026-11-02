@@ -3,6 +3,16 @@
 Toutes les évolutions notables de `regulation` (pi-boiler) sont consignées ici.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [Non publié]
+
+### Ajouté
+
+- Page `ui/doc.html` « Fonctionnement et règles de régulation », servie par
+  `ui/pi_bridge.py` sur `/doc.html` et liée depuis l'IHM : boutons, cycle de
+  combustion, seuils de température, ralenti, surchauffe, verrouillage,
+  bourrages, panne de sonde, réglages, supervision, points d'attention. Le jar
+  de régulation est inchangé.
+
 ## [1.8.1] - 2026-10-31
 
 ### Corrigé
