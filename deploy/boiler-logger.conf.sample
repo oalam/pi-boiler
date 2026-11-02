@@ -2,8 +2,9 @@
 # (ce fichier .sample est versionné ; la vraie conf reste hors git.)
 
 # Dossier de dépôt SFTP : <home du compte SFTPGo>/<campagne>/<device>/
+# SFTPGo écoute sur le port 2022 (le 22 est le SSH de l'hôte).
 # Les composants campagne et device nomment la campagne et l'appareil dans Powerview2.
-SFTP_URL="sftp://217.160.116.85/chaudiere/pi-boiler/"
+SFTP_URL="sftp://217.160.116.85:2022/chaudiere/pi-boiler/"
 
 # Identifiants SFTP au format netrc (fichier en 0600, propriétaire pi) :
 #   machine 217.160.116.85 login <utilisateur> password <mot de passe>

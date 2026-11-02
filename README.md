@@ -220,7 +220,7 @@ Conrad de la phase 2 : Crouzet 84132210N + varistance + condensateur X2).
 `ui/boiler_logger.py` (service `boiler-logger`, utilisateur `pi`) observe chaque
 seconde la sonde et les 7 GPIO (5 organes, 2 contacts de bourrage), agrège par
 minute, détecte les événements par transition et dépose des CSV par SFTP sur le
-VPS Powerview2 toutes les 5 min, au format canonique `PV2_CSV_V001` /
+VPS Powerview2 (SFTPGo, port 2022) toutes les 5 min, au format canonique `PV2_CSV_V001` /
 `PV2_EVENTS_V001` (powerview2 v1.4.33). Chemin de dépôt
 `<home SFTP>/chaudiere/pi-boiler/` : `chaudiere` devient la campagne et
 `pi-boiler` l'appareil dans Powerview2. Il ne dépend pas de la régulation Scala

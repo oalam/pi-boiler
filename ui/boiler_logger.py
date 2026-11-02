@@ -44,7 +44,7 @@ CONF_PATH = "/etc/boiler-logger.conf"
 W1_SLAVE = "/sys/bus/w1/devices/28-021581cc38ff/w1_slave"
 
 DEFAULTS = {
-    "SFTP_URL": "sftp://217.160.116.85/chaudiere/pi-boiler/",
+    "SFTP_URL": "sftp://217.160.116.85:2022/chaudiere/pi-boiler/",
     "NETRC_FILE": "/etc/boiler-logger.netrc",
     "SPOOL_DIR": "/var/lib/boiler-logger",
     "CHANNEL_PREFIX": "boiler",
